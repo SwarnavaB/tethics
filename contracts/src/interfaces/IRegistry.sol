@@ -19,9 +19,45 @@ interface IRegistry {
         bool exists;
     }
 
+    /// @notice Public view of a pending (awaiting approval) registration
+    struct PendingProjectView {
+        address founder;
+        bytes32[] proofHashes;
+        uint256 submittedAt;
+        bool exists;
+    }
+
     // ─── Events ───────────────────────────────────────────────────────────────
 
-    /// @notice Emitted when a new project is registered
+    /// @notice Emitted when contract ownership is transferred
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    /// @notice Emitted when an approver is added
+    event ApproverAdded(address indexed approver);
+
+    /// @notice Emitted when an approver is removed
+    event ApproverRemoved(address indexed approver);
+
+    /// @notice Emitted when a founder submits a registration (awaiting approval)
+    event RegistrationSubmitted(
+        bytes32 indexed nameHash,
+        string name,
+        address indexed founder,
+        uint256 submittedAt
+    );
+
+    /// @notice Emitted when an approver approves a pending registration
+    event RegistrationApproved(bytes32 indexed nameHash, string name, address indexed approver);
+
+    /// @notice Emitted when an approver rejects a pending registration
+    event RegistrationRejected(
+        bytes32 indexed nameHash,
+        string name,
+        address indexed approver,
+        string reason
+    );
+
+    /// @notice Emitted when a new project becomes active (after approval)
     event ProjectRegistered(
         bytes32 indexed nameHash,
         string name,
@@ -57,6 +93,10 @@ interface IRegistry {
 
     // ─── Errors ───────────────────────────────────────────────────────────────
 
+    error NotOwner();
+    error NotApprover();
+    error RegistrationPending(bytes32 nameHash);
+    error NoPendingRegistration(bytes32 nameHash);
     error ProjectAlreadyExists(bytes32 nameHash);
     error ProjectNotFound(bytes32 nameHash);
     error NotFounder(address caller, address founder);
@@ -69,9 +109,35 @@ interface IRegistry {
     error ShieldAlreadyLinked();
     error OnlyShieldFactory();
 
+    // ─── Governance Functions ─────────────────────────────────────────────────
+
+    /// @notice Transfer contract ownership to a new address
+    /// @param newOwner Address of the new owner
+    function transferOwnership(address newOwner) external;
+
+    /// @notice Add an address to the approver set (owner only)
+    /// @param approver Address to grant approver rights
+    function addApprover(address approver) external;
+
+    /// @notice Remove an address from the approver set (owner only)
+    /// @param approver Address to revoke approver rights from
+    function removeApprover(address approver) external;
+
+    // ─── Approval Functions ───────────────────────────────────────────────────
+
+    /// @notice Approve a pending registration, making the project active
+    /// @param name Project name matching the pending submission
+    function approveRegistration(string calldata name) external;
+
+    /// @notice Reject a pending registration; founder may re-apply
+    /// @param name Project name matching the pending submission
+    /// @param reason Human-readable reason for rejection
+    function rejectRegistration(string calldata name, string calldata reason) external;
+
     // ─── Core Functions ────────────────────────────────────────────────────────
 
-    /// @notice Register a new project with cryptographic identity proofs
+    /// @notice Submit a registration for approval. Onchain proofs (DEPLOYER_SIG) are verified
+    ///         immediately; off-chain proofs are stored as hashes for approver review.
     /// @param name Project name (will be normalized onchain)
     /// @param proofs Array of at least 2 verification proofs from different categories
     function register(string calldata name, VerificationLib.Proof[] calldata proofs) external;
@@ -119,18 +185,28 @@ interface IRegistry {
     /// @return True if authorized
     function isAuthorized(string calldata name, address tokenContract) external view returns (bool);
 
-    /// @notice Get full public info for a project
+    /// @notice Get full public info for a registered project
     /// @param name Project name
     /// @return ProjectView struct with all public data
     function getProjectInfo(string calldata name) external view returns (ProjectView memory);
+
+    /// @notice Get public info for a pending (awaiting approval) registration
+    /// @param name Project name
+    /// @return PendingProjectView struct
+    function getPendingInfo(string calldata name) external view returns (PendingProjectView memory);
 
     /// @notice Get the founder address for a project
     /// @param name Project name
     /// @return Founder address
     function getFounder(string calldata name) external view returns (address);
 
-    /// @notice Check if a project name is registered
+    /// @notice Check if a project name is registered (active)
     /// @param name Project name
-    /// @return True if registered
+    /// @return True if registered and approved
     function isRegistered(string calldata name) external view returns (bool);
+
+    /// @notice Check if a project name has a pending registration awaiting approval
+    /// @param name Project name
+    /// @return True if pending
+    function isPending(string calldata name) external view returns (bool);
 }

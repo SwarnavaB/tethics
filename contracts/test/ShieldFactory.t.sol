@@ -85,5 +85,7 @@ contract ShieldFactoryTest is Test {
 
         vm.prank(founder);
         registry.register(name, proofs);
+        // Test contract is the owner - approve directly
+        registry.approveRegistration(name);
     }
 }

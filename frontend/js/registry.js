@@ -123,6 +123,46 @@ export async function predictShieldAddress(founderAddress, projectName) {
   });
 }
 
+export async function getRegistryOwner() {
+  const client = getPublicClient();
+  return client.readContract({
+    address: registryAddress(),
+    abi: REGISTRY_ABI,
+    functionName: 'owner',
+    args: [],
+  });
+}
+
+export async function isRegistryApprover(address) {
+  const client = getPublicClient();
+  return client.readContract({
+    address: registryAddress(),
+    abi: REGISTRY_ABI,
+    functionName: 'isApprover',
+    args: [address],
+  });
+}
+
+export async function isPending(name) {
+  const client = getPublicClient();
+  return client.readContract({
+    address: registryAddress(),
+    abi: REGISTRY_ABI,
+    functionName: 'isPending',
+    args: [normalizeName(name)],
+  });
+}
+
+export async function getPendingInfo(name) {
+  const client = getPublicClient();
+  return client.readContract({
+    address: registryAddress(),
+    abi: REGISTRY_ABI,
+    functionName: 'getPendingInfo',
+    args: [normalizeName(name)],
+  });
+}
+
 // ── Write functions ───────────────────────────────────────────────────────────
 
 export async function registerProject(name, proofs) {
@@ -173,6 +213,54 @@ export async function reportUnauthorizedToken(name, tokenAddress) {
   });
 }
 
+export async function approveRegistration(name) {
+  const wc = await getWalletClient();
+  const account = await getAccount();
+  return wc.writeContract({
+    address: registryAddress(),
+    abi: REGISTRY_ABI,
+    functionName: 'approveRegistration',
+    args: [normalizeName(name)],
+    account,
+  });
+}
+
+export async function rejectRegistration(name, reason) {
+  const wc = await getWalletClient();
+  const account = await getAccount();
+  return wc.writeContract({
+    address: registryAddress(),
+    abi: REGISTRY_ABI,
+    functionName: 'rejectRegistration',
+    args: [normalizeName(name), reason],
+    account,
+  });
+}
+
+export async function addApprover(approverAddress) {
+  const wc = await getWalletClient();
+  const account = await getAccount();
+  return wc.writeContract({
+    address: registryAddress(),
+    abi: REGISTRY_ABI,
+    functionName: 'addApprover',
+    args: [approverAddress],
+    account,
+  });
+}
+
+export async function removeApprover(approverAddress) {
+  const wc = await getWalletClient();
+  const account = await getAccount();
+  return wc.writeContract({
+    address: registryAddress(),
+    abi: REGISTRY_ABI,
+    functionName: 'removeApprover',
+    args: [approverAddress],
+    account,
+  });
+}
+
 export async function deployShield(projectName, charityAddress) {
   const wc = await getWalletClient();
   const account = await getAccount();
@@ -200,6 +288,29 @@ export async function getRecentReports(fromBlock = 'earliest') {
           { name: 'name', type: 'string', indexed: false },
           { name: 'tokenContract', type: 'address', indexed: true },
           { name: 'reporter', type: 'address', indexed: true },
+        ],
+      },
+      fromBlock,
+    });
+    return logs;
+  } catch {
+    return [];
+  }
+}
+
+export async function getRecentSubmissions(fromBlock = 'earliest') {
+  const client = getPublicClient();
+  try {
+    const logs = await client.getLogs({
+      address: registryAddress(),
+      event: {
+        type: 'event',
+        name: 'RegistrationSubmitted',
+        inputs: [
+          { name: 'nameHash', type: 'bytes32', indexed: true },
+          { name: 'name', type: 'string', indexed: false },
+          { name: 'founder', type: 'address', indexed: true },
+          { name: 'submittedAt', type: 'uint256', indexed: false },
         ],
       },
       fromBlock,

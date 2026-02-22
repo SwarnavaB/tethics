@@ -5,7 +5,7 @@
 tethics is a four-layer system deployed on Base (Ethereum L2). All layers are fully onchain or decentralized: no servers, no databases, no admin keys.
 
 ```
-Layer 1: Registry.sol        : Single immutable ownerless contract
+Layer 1: Registry.sol        : Registry with owner-governed approval queue
 Layer 2: Shield.sol          : Per-founder charity drain + attestation
 Layer 3: Static Frontend     : IPFS-hosted SPA
 Layer 4: Watcher CLI         : Community-run detection script
@@ -19,12 +19,26 @@ Layer 4: Watcher CLI         : Community-run detection script
 
 The Registry is the canonical truth about which projects are verified and which tokens are authorized. It is deployed once per chain and never upgraded.
 
+### Governance
+
+The Registry has an owner (initially the deployer / tethics.eth holder) who can:
+- Approve or reject pending registrations
+- Add and remove approver addresses
+- Transfer ownership to another address
+
+Approvers can approve or reject pending registrations but cannot delegate further. The owner is the only one who can manage the approver set.
+
+This trust model starts centralised (tethics.eth holder) and can be progressively decentralised by adding community approvers as the system matures.
+
 ### Storage
 
 ```solidity
-mapping(bytes32 => Project) private _projects;          // nameHash → Project
+address public owner;                                     // governance
+mapping(address => bool) public isApprover;               // delegated approvers
+mapping(bytes32 => Project) private _projects;            // nameHash → active Project
+mapping(bytes32 => PendingProject) private _pendingProjects; // nameHash → PendingProject
 mapping(bytes32 => mapping(address => bool)) private _authorizedTokens; // nameHash → token → bool
-mapping(address => uint256) public reporterScore;       // address → report count
+mapping(address => uint256) public reporterScore;         // address → report count
 ```
 
 ### Project Name Normalization
@@ -38,10 +52,21 @@ Valid names: 2–64 characters, alphanumeric + hyphens + underscores (`[a-z0-9\-
 ```
 Founder → register("projectname", proofs[]) →
   1. Validate name (isValidName)
-  2. Check not already registered
-  3. Validate proofs (≥2, different categories)
-  4. Store project + 48h challenge deadline
-  5. Emit ProjectRegistered
+  2. Check not already registered AND not already pending
+  3. Validate proofs - ecrecover for DEPLOYER_SIG happens immediately
+  4. Store in _pendingProjects with submittedAt = block.timestamp
+  5. Emit RegistrationSubmitted (visible onchain immediately)
+
+Owner/Approver → approveRegistration("projectname") →
+  1. Load from _pendingProjects
+  2. Move to _projects with challengeDeadline = block.timestamp + 48h
+  3. Delete pending entry
+  4. Emit RegistrationApproved + ProjectRegistered
+
+Owner/Approver → rejectRegistration("projectname", "reason") →
+  1. Delete from _pendingProjects
+  2. Emit RegistrationRejected
+  (Founder may re-apply after rejection)
 ```
 
 ### Verification Proofs
@@ -185,10 +210,10 @@ Reporter pays their own gas. Incentive is onchain reputation (`reporterScore`) a
 
 ### Immutability
 
-- Registry has no owner, no upgrade mechanism, no admin keys
+- Registry has no upgrade mechanism; the owner can only approve/reject registrations and manage approvers
 - Shield charity address is immutable post-deployment
 - ShieldFactory just deploys: no ongoing state
-- The system is a public utility, not a product
+- The governance key (owner) can be renounced by transferring to `address(0)` to make the registry fully ownerless
 
 ### Impersonation Resistance
 
@@ -215,7 +240,9 @@ The charity drain makes unauthorized token ownership economically worthless if t
 
 | Operation | Approx Gas | Approx Cost (0.1 Gwei) |
 |-----------|-----------|------------------------|
-| `register()` | ~200,000 | ~$0.02 |
+| `register()` | ~180,000 | ~$0.018 |
+| `approveRegistration()` | ~80,000 | ~$0.008 |
+| `rejectRegistration()` | ~40,000 | ~$0.004 |
 | `deployShield()` | ~800,000 | ~$0.08 |
 | `reportUnauthorizedToken()` | ~50,000 | ~$0.005 |
 | `authorizeToken()` | ~50,000 | ~$0.005 |

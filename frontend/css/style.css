@@ -313,6 +313,55 @@ select option { background: var(--bg-card); }
   border-radius: 20px;
 }
 
+.badge-pending {
+  background: rgba(91, 127, 255, 0.1);
+  border: 1px solid rgba(91, 127, 255, 0.3);
+  color: var(--primary);
+  font-size: 0.8rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+}
+
+/* ── Approver panel ─────────────────────────────────────────────────────────── */
+
+.approver-panel {
+  border: 1px solid rgba(91, 127, 255, 0.25);
+  margin-bottom: 1.5rem;
+}
+
+.approver-panel h2 {
+  color: var(--primary);
+  margin-bottom: 0.5rem;
+}
+
+.pending-approval-row {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.pending-approval-row:last-child {
+  border-bottom: none;
+}
+
+.pending-approval-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.approval-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.approval-actions .reject-reason-input {
+  flex: 1;
+  min-width: 180px;
+}
+
 /* ── Project cards ──────────────────────────────────────────────────────────── */
 
 .project-list { display: flex; flex-direction: column; gap: 1.5rem; }

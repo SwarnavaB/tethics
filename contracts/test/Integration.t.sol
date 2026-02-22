@@ -9,7 +9,7 @@ import {IRegistry} from "../src/interfaces/IRegistry.sol";
 import {VerificationLib} from "../src/libraries/VerificationLib.sol";
 
 /// @title IntegrationTest
-/// @notice End-to-end tests: register → deploy shield → report unauthorized token → drain to charity
+/// @notice End-to-end tests: register → approve → deploy shield → report unauthorized token → drain to charity
 contract IntegrationTest is Test {
     Registry public registry;
     ShieldFactory public factory;
@@ -41,6 +41,7 @@ contract IntegrationTest is Test {
         address predictedRegistry = vm.computeCreateAddress(address(this), currentNonce);
         address predictedFactory  = vm.computeCreateAddress(address(this), currentNonce + 1);
 
+        // IntegrationTest contract (address(this)) becomes owner of registry
         registry = new Registry(predictedFactory);
         require(address(registry) == predictedRegistry, "Registry address prediction failed");
 
@@ -50,17 +51,26 @@ contract IntegrationTest is Test {
 
     // ─── Full Flow Test ────────────────────────────────────────────────────────
 
-    /// @notice Full happy path: register → deploy shield → report → drain → notify
+    /// @notice Full happy path: register → approve → deploy shield → report → drain → notify
     function test_fullFlow() public {
-        // ── Step 1: Founder registers project ──
+        // ── Step 1: Founder submits registration ──
         VerificationLib.Proof[] memory proofs = _buildProofs("sovra");
         vm.prank(founder);
         registry.register("sovra", proofs);
 
+        // Not yet active - pending approval
+        assertFalse(registry.isRegistered("sovra"));
+        assertTrue(registry.isPending("sovra"));
+
+        // ── Step 2: Owner approves the registration ──
+        // IntegrationTest is the owner (deployed the registry)
+        registry.approveRegistration("sovra");
+
         assertTrue(registry.isRegistered("sovra"));
+        assertFalse(registry.isPending("sovra"));
         assertEq(registry.getFounder("sovra"), founder);
 
-        // ── Step 2: Founder deploys Shield ──
+        // ── Step 3: Founder deploys Shield ──
         vm.prank(founder);
         address shieldAddr = factory.deployShield("sovra", charity);
         assertTrue(shieldAddr != address(0));
@@ -72,20 +82,20 @@ contract IntegrationTest is Test {
         IRegistry.ProjectView memory info = registry.getProjectInfo("sovra");
         assertEq(info.shieldContract, shieldAddr);
 
-        // ── Step 3: Reporter flags unauthorized token ──
+        // ── Step 4: Reporter flags unauthorized token ──
         vm.prank(reporter);
         registry.reportUnauthorizedToken("sovra", address(badToken));
 
         assertEq(registry.reporterScore(reporter), 1);
         assertFalse(registry.isAuthorized("sovra", address(badToken)));
 
-        // ── Step 4: Drain bad token to charity ──
+        // ── Step 5: Drain bad token to charity ──
         badToken.mint(shieldAddr, 10_000e18);
         shield.drainToken(address(badToken));
         // MockSwapRouter accepts tokens and returns nothing (swap "works")
         assertEq(badToken.balanceOf(shieldAddr), 0);
 
-        // ── Step 5: Notify buyers ──
+        // ── Step 6: Notify buyers ──
         address[] memory holders = new address[](2);
         holders[0] = buyer1;
         holders[1] = buyer2;
@@ -95,7 +105,7 @@ contract IntegrationTest is Test {
         assertEq(shield.notificationCount(buyer1, address(badToken)), 1);
         assertEq(shield.notificationCount(buyer2, address(badToken)), 1);
 
-        // ── Step 6: Founder authorizes legitimate token ──
+        // ── Step 7: Founder authorizes legitimate token ──
         address legitimateToken = makeAddr("legit");
         vm.prank(founder);
         registry.authorizeToken("sovra", legitimateToken);
@@ -108,12 +118,12 @@ contract IntegrationTest is Test {
         vm.expectRevert(abi.encodeWithSelector(IRegistry.TokenIsAuthorized.selector, legitimateToken));
         registry.reportUnauthorizedToken("sovra", legitimateToken);
 
-        // ── Step 7: Founder revokes authorization ──
+        // ── Step 8: Founder revokes authorization ──
         vm.prank(founder);
         registry.revokeToken("sovra", legitimateToken);
         assertFalse(registry.isAuthorized("sovra", legitimateToken));
 
-        // ── Step 8: ETH sent to shield goes to charity ──
+        // ── Step 9: ETH sent to shield goes to charity ──
         uint256 beforeCharity = charity.balance;
         deal(reporter, 5 ether);
         vm.prank(reporter);
@@ -126,6 +136,7 @@ contract IntegrationTest is Test {
         VerificationLib.Proof[] memory proofs = _buildProofs("myproject");
         vm.prank(founder);
         registry.register("  MyProject  ", proofs);
+        registry.approveRegistration("  MyProject  ");
 
         // All variants resolve to same project
         assertTrue(registry.isRegistered("myproject"));
@@ -138,6 +149,7 @@ contract IntegrationTest is Test {
         VerificationLib.Proof[] memory proofs = _buildProofs("contested");
         vm.prank(founder);
         registry.register("contested", proofs);
+        registry.approveRegistration("contested");
 
         assertTrue(block.timestamp <= registry.getProjectInfo("contested").challengeDeadline);
 

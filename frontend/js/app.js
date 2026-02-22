@@ -6,6 +6,8 @@ import {
   registerProject, authorizeToken, revokeToken,
   reportUnauthorizedToken, deployShield, predictShieldAddress,
   getRecentReports, getRecentRegistrations, getReporterScore,
+  getRecentSubmissions, getRegistryOwner, isRegistryApprover,
+  approveRegistration, rejectRegistration, addApprover, removeApprover,
   normalizeName,
 } from './registry.js';
 import { getShieldInfo, getShieldBalance, getCharityDrainLogs, drainToken, drainETH } from './shield.js';
@@ -220,10 +222,10 @@ async function renderRegister(container) {
     </div>
 
     <div class="card">
-      <h2>Step 3: Submit Registration</h2>
-      <p>Registration is onchain. You must be connected with the founder wallet address.</p>
-      <p><strong>Note:</strong> After registration, there is a 48-hour challenge window. Deploy your Shield after the window closes.</p>
-      <button class="btn btn-primary" id="reg-submit-btn">Register on Base</button>
+      <h2>Step 3: Submit for Approval</h2>
+      <p>Your registration is submitted onchain and enters a review queue. You must be connected with your founder wallet.</p>
+      <p><strong>What happens next:</strong> The tethics team (and any delegated community approvers) will review your off-chain proofs and approve your registration. Once approved, a 48-hour challenge window opens before you can deploy your Shield.</p>
+      <button class="btn btn-primary" id="reg-submit-btn">Submit Registration</button>
       <div id="reg-result"></div>
     </div>
   `;
@@ -306,8 +308,9 @@ async function renderRegister(container) {
       const txHash = await registerProject(name, proofs.map(p => ({ proofType: p.proofType, data: p.data })));
       result.innerHTML = `
         <div class="success-box">
-          Registration submitted!<br>
-          <a href="${explorerLink(txHash)}" target="_blank" rel="noopener">View on ${DEFAULT_CHAIN.name} Explorer</a>
+          Registration submitted and pending approval.<br>
+          <a href="${explorerLink(txHash)}" target="_blank" rel="noopener">View on ${DEFAULT_CHAIN.name} Explorer</a><br>
+          <small>Check your <a href="#/dashboard">Dashboard</a> to track approval status.</small>
         </div>
       `;
     } catch (e) {
@@ -329,65 +332,220 @@ async function renderDashboard(container) {
   async function loadDashboard(account) {
     setLoading('dash-content', 'Loading your projects…');
     try {
-      // Fetch recent registrations to find projects by this founder
-      const logs = await getRecentRegistrations();
-      const myProjects = logs.filter(l => l.args.founder?.toLowerCase() === account.toLowerCase());
+      // Check if this wallet has approver or owner rights
+      let canApprove = false;
+      try {
+        const [ownerAddr, approverStatus] = await Promise.all([
+          getRegistryOwner(),
+          isRegistryApprover(account),
+        ]);
+        canApprove = ownerAddr.toLowerCase() === account.toLowerCase() || approverStatus;
+      } catch { /* contract not yet deployed */ }
 
-      if (myProjects.length === 0) {
-        $('dash-content').innerHTML = `
+      // Fetch registration events (approved + pending submissions)
+      const [registeredLogs, submittedLogs] = await Promise.all([
+        getRecentRegistrations(),
+        getRecentSubmissions(),
+      ]);
+
+      const myActive = registeredLogs.filter(l => l.args.founder?.toLowerCase() === account.toLowerCase());
+      const approvedHashes = new Set(registeredLogs.map(l => l.args.nameHash));
+      // Pending = submitted by this founder and not yet in the approved set
+      const myPending = submittedLogs.filter(l =>
+        l.args.founder?.toLowerCase() === account.toLowerCase() &&
+        !approvedHashes.has(l.args.nameHash)
+      );
+      // All pending for approver panel
+      const allPending = canApprove
+        ? submittedLogs.filter(l => !approvedHashes.has(l.args.nameHash))
+        : [];
+
+      const html = [];
+
+      // Approver panel (shown first if applicable)
+      if (canApprove) {
+        html.push(`
+          <div class="approver-panel card">
+            <h2>Approver Panel</h2>
+            <p>You are authorized to approve or reject pending registrations.</p>
+            ${allPending.length === 0
+              ? '<p class="muted">No pending registrations at this time.</p>'
+              : `<div id="approver-pending-list">${allPending.map(log => {
+                const name = log.args.name;
+                const founder = log.args.founder;
+                const submittedAt = log.args.submittedAt;
+                return `
+                  <div class="pending-approval-row" id="approval-row-${name}">
+                    <div class="pending-approval-info">
+                      <strong>${name}</strong>
+                      <span class="muted">submitted by <a href="${explorerLink(founder)}" target="_blank">${shortAddr(founder)}</a> at ${formatTs(submittedAt)}</span>
+                    </div>
+                    <div class="approval-actions">
+                      <button class="btn btn-primary btn-sm approve-btn" data-name="${name}">Approve</button>
+                      <input type="text" class="reject-reason-input" id="reject-reason-${name}" placeholder="Rejection reason" />
+                      <button class="btn btn-danger btn-sm reject-btn" data-name="${name}">Reject</button>
+                    </div>
+                    <div id="approval-result-${name}"></div>
+                  </div>
+                `;
+              }).join('')}</div>`
+            }
+            <div class="dash-actions" style="margin-top:1rem">
+              <h3>Manage Approvers</h3>
+              <input type="text" id="approver-addr-input" placeholder="0x… address" />
+              <button class="btn btn-secondary btn-sm" id="add-approver-btn">Add Approver</button>
+              <button class="btn btn-danger btn-sm" id="remove-approver-btn">Remove Approver</button>
+              <div id="approver-mgmt-result"></div>
+            </div>
+          </div>
+        `);
+      }
+
+      // Pending registrations for this founder
+      if (myPending.length > 0) {
+        html.push('<div class="project-list">');
+        for (const log of myPending) {
+          const name = log.args.name;
+          const submittedAt = log.args.submittedAt;
+          html.push(`
+            <div class="project-card" data-name="${name}">
+              <div class="project-header">
+                <h2>${name}</h2>
+                <span class="badge badge-pending">Pending Approval</span>
+              </div>
+              <div class="project-meta">
+                <div><strong>Submitted:</strong> ${formatTs(submittedAt)}</div>
+              </div>
+              <p class="muted">Your registration is awaiting review by the tethics team. You will be able to deploy a Shield and manage tokens once approved.</p>
+            </div>
+          `);
+        }
+        html.push('</div>');
+      }
+
+      // Active (approved) registrations
+      if (myActive.length > 0) {
+        html.push('<div class="project-list">');
+        for (const log of myActive) {
+          const name = log.args.name;
+          let info;
+          try { info = await getProjectInfo(name); } catch { continue; }
+
+          const hasShield = info.shieldContract && info.shieldContract !== '0x0000000000000000000000000000000000000000';
+          const shieldBalance = hasShield ? await getShieldBalance(info.shieldContract) : 0n;
+          const challengeOpen = Date.now() / 1000 < Number(info.challengeDeadline);
+
+          html.push(`
+            <div class="project-card" data-name="${name}">
+              <div class="project-header">
+                <h2>${name}</h2>
+                ${challengeOpen ? '<span class="badge badge-warning">Challenge Window Open</span>' : '<span class="badge badge-verified">Approved</span>'}
+              </div>
+              <div class="project-meta">
+                <div><strong>Founder:</strong> <a href="${explorerLink(info.founder)}" target="_blank">${shortAddr(info.founder)}</a></div>
+                <div><strong>Registered:</strong> ${formatTs(info.registeredAt)}</div>
+                <div><strong>Shield:</strong> ${hasShield ? `<a href="${explorerLink(info.shieldContract)}" target="_blank">${shortAddr(info.shieldContract)}</a> (${shieldBalance > 0n ? (Number(shieldBalance) / 1e18).toFixed(4) + ' ETH held' : 'empty'})` : 'Not deployed'}</div>
+                <div><strong>Proofs:</strong> ${info.verificationProofs.length} stored</div>
+              </div>
+              ${!hasShield ? `
+                <div class="dash-actions">
+                  <h3>Deploy Shield</h3>
+                  <select id="charity-sel-${name}">
+                    ${CHARITY_OPTIONS.map(c => `<option value="${c.address}">${c.name}</option>`).join('')}
+                  </select>
+                  <button class="btn btn-primary deploy-shield-btn" data-name="${name}">Deploy Shield</button>
+                </div>
+              ` : ''}
+              <div class="dash-actions">
+                <h3>Authorize Token</h3>
+                <input type="text" class="authorize-input" id="auth-input-${name}" placeholder="0x… token address" />
+                <button class="btn btn-primary authorize-btn" data-name="${name}">Authorize</button>
+                <button class="btn btn-secondary revoke-btn" data-name="${name}">Revoke</button>
+              </div>
+              <div id="dash-result-${name}"></div>
+            </div>
+          `);
+        }
+        html.push('</div>');
+      }
+
+      if (myActive.length === 0 && myPending.length === 0 && !canApprove) {
+        html.push(`
           <div class="info-box">
             No projects registered from <code>${account}</code>.<br>
             <a href="#/register">Register a project</a> to get started.
           </div>
-        `;
-        return;
-      }
-
-      const html = ['<div class="project-list">'];
-      for (const log of myProjects) {
-        const name = log.args.name;
-        let info;
-        try { info = await getProjectInfo(name); } catch { continue; }
-
-        const hasShield = info.shieldContract && info.shieldContract !== '0x0000000000000000000000000000000000000000';
-        const shieldBalance = hasShield ? await getShieldBalance(info.shieldContract) : 0n;
-        const challengeOpen = Date.now() / 1000 < Number(info.challengeDeadline);
-
-        html.push(`
-          <div class="project-card" data-name="${name}">
-            <div class="project-header">
-              <h2>${name}</h2>
-              ${challengeOpen ? '<span class="badge badge-warning">Challenge Window Open</span>' : '<span class="badge badge-verified">Verified</span>'}
-            </div>
-            <div class="project-meta">
-              <div><strong>Founder:</strong> <a href="${explorerLink(info.founder)}" target="_blank">${shortAddr(info.founder)}</a></div>
-              <div><strong>Registered:</strong> ${formatTs(info.registeredAt)}</div>
-              <div><strong>Shield:</strong> ${hasShield ? `<a href="${explorerLink(info.shieldContract)}" target="_blank">${shortAddr(info.shieldContract)}</a> (${shieldBalance > 0n ? (Number(shieldBalance) / 1e18).toFixed(4) + ' ETH held' : 'empty'})` : 'Not deployed'}</div>
-              <div><strong>Proofs:</strong> ${info.verificationProofs.length} stored</div>
-            </div>
-            ${!hasShield ? `
-              <div class="dash-actions">
-                <h3>Deploy Shield</h3>
-                <select id="charity-sel-${name}">
-                  ${CHARITY_OPTIONS.map(c => `<option value="${c.address}">${c.name}</option>`).join('')}
-                </select>
-                <button class="btn btn-primary deploy-shield-btn" data-name="${name}">Deploy Shield</button>
-              </div>
-            ` : ''}
-            <div class="dash-actions">
-              <h3>Authorize Token</h3>
-              <input type="text" class="authorize-input" id="auth-input-${name}" placeholder="0x… token address" />
-              <button class="btn btn-primary authorize-btn" data-name="${name}">Authorize</button>
-              <button class="btn btn-secondary revoke-btn" data-name="${name}">Revoke</button>
-            </div>
-            <div id="dash-result-${name}"></div>
-          </div>
         `);
       }
-      html.push('</div>');
+
       $('dash-content').innerHTML = html.join('');
 
-      // Bind events
+      // Bind approve/reject buttons
+      document.querySelectorAll('.approve-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const name = btn.dataset.name;
+          const result = $(`approval-result-${name}`);
+          result.innerHTML = '<div class="spinner"></div>';
+          try {
+            const txHash = await approveRegistration(name);
+            result.innerHTML = `<div class="success-box">Approved! <a href="${explorerLink(txHash)}" target="_blank">View tx</a></div>`;
+            $(`approval-row-${name}`).style.opacity = '0.5';
+          } catch (e) {
+            result.innerHTML = `<div class="error-box">${e.shortMessage || e.message}</div>`;
+          }
+        });
+      });
+
+      document.querySelectorAll('.reject-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const name = btn.dataset.name;
+          const reason = document.getElementById(`reject-reason-${name}`).value.trim();
+          const result = $(`approval-result-${name}`);
+          if (!reason) { toast('Enter a rejection reason', 'error'); return; }
+          result.innerHTML = '<div class="spinner"></div>';
+          try {
+            const txHash = await rejectRegistration(name, reason);
+            result.innerHTML = `<div class="success-box">Rejected. <a href="${explorerLink(txHash)}" target="_blank">View tx</a></div>`;
+            $(`approval-row-${name}`).style.opacity = '0.5';
+          } catch (e) {
+            result.innerHTML = `<div class="error-box">${e.shortMessage || e.message}</div>`;
+          }
+        });
+      });
+
+      // Bind approver management buttons
+      const addBtn = $('add-approver-btn');
+      const removeBtn = $('remove-approver-btn');
+      if (addBtn) {
+        addBtn.addEventListener('click', async () => {
+          const addr = $('approver-addr-input').value.trim();
+          const result = $('approver-mgmt-result');
+          if (!addr) { toast('Enter an address', 'error'); return; }
+          result.innerHTML = '<div class="spinner"></div>';
+          try {
+            const txHash = await addApprover(addr);
+            result.innerHTML = `<div class="success-box">Approver added! <a href="${explorerLink(txHash)}" target="_blank">View tx</a></div>`;
+          } catch (e) {
+            result.innerHTML = `<div class="error-box">${e.shortMessage || e.message}</div>`;
+          }
+        });
+      }
+      if (removeBtn) {
+        removeBtn.addEventListener('click', async () => {
+          const addr = $('approver-addr-input').value.trim();
+          const result = $('approver-mgmt-result');
+          if (!addr) { toast('Enter an address', 'error'); return; }
+          result.innerHTML = '<div class="spinner"></div>';
+          try {
+            const txHash = await removeApprover(addr);
+            result.innerHTML = `<div class="success-box">Approver removed. <a href="${explorerLink(txHash)}" target="_blank">View tx</a></div>`;
+          } catch (e) {
+            result.innerHTML = `<div class="error-box">${e.shortMessage || e.message}</div>`;
+          }
+        });
+      }
+
+      // Bind deploy/authorize/revoke buttons
       document.querySelectorAll('.deploy-shield-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const name = btn.dataset.name;
