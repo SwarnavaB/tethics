@@ -1,0 +1,35 @@
+# Foundry build artifacts
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+contracts/.env
+
+# Foundry dependencies (checked in via forge install, but large)
+# Uncomment to exclude:
+# contracts/lib/
+
+# Watcher
+watcher/node_modules/
+watcher/dist/
+watcher/.env
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Frontend (no build step, nothing to exclude)
