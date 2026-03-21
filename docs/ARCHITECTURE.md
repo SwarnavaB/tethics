@@ -2,263 +2,298 @@
 
 ## Overview
 
-tethics is a four-layer system deployed on Base (Ethereum L2). All layers are fully onchain or decentralized: no servers, no databases, no admin keys.
+This document now assumes the production target is chain-native governance, not Solana-through-EVM coordination.
 
-```
-Layer 1: Registry.sol        : Registry with owner-governed approval queue
-Layer 2: Shield.sol          : Per-founder charity drain + attestation
-Layer 3: Static Frontend     : IPFS-hosted SPA
-Layer 4: Watcher CLI         : Community-run detection script
+tethics is a cross-chain project verification and token authorization system.
+
+Its job is to answer:
+
+> Did the real founder authorize this token launch on this chain and venue?
+
+The current target ecosystems are:
+
+- EVM, starting with Base
+- Solana, starting with Bags.fm-originated launches
+
+The system is intentionally hybrid:
+
+- chain-native authoritative records on each ecosystem
+- offchain indexing and venue adapters for detection and evidence
+- static or mostly static public verification surfaces
+
+This is a product architecture, not just a contract architecture.
+
+---
+
+## System Layers
+
+```text
+Layer 1: Identity And Approval
+  Project registration, proofs, founder identities, curator/approver review
+
+Layer 2: Chain Authorization
+  EVM registry state, Solana attestations/program records, authorized assets and launch wallets
+
+Layer 3: Detection And Evidence
+  Venue adapters, watchers, matchers, confidence scoring, evidence bundles
+
+Layer 4: Distribution And Verification
+  Public verification pages, feeds, dashboards, reviewer queue, integration APIs
 ```
 
 ---
 
-## Layer 1: Registry
+## Layer 1: Identity And Approval
 
-**File:** `contracts/src/Registry.sol`
+This layer defines the canonical project record.
 
-The Registry is the canonical truth about which projects are verified and which tokens are authorized. It is deployed once per chain and never upgraded.
+Core concepts:
 
-### Governance
+- one project slug per project
+- multiple founder identities
+- multiple proof types
+- explicit approval workflow
+- explicit reviewer actions
 
-The Registry has an owner (initially the deployer / tethics.eth holder) who can:
-- Approve or reject pending registrations
-- Add and remove approver addresses
-- Transfer ownership to another address
+### Inputs
 
-Approvers can approve or reject pending registrations but cannot delegate further. The owner is the only one who can manage the approver set.
+- EVM wallet proofs
+- Solana wallet proofs
+- ENS/SNS proofs
+- DNS proofs
+- GitHub proofs
+- venue identity proofs
 
-This trust model starts centralised (tethics.eth holder) and can be progressively decentralised by adding community approvers as the system matures.
+### Outputs
 
-### Storage
+- approved project records
+- approved founder identity records
+- review log
 
-```solidity
-address public owner;                                     // governance
-mapping(address => bool) public isApprover;               // delegated approvers
-mapping(bytes32 => Project) private _projects;            // nameHash → active Project
-mapping(bytes32 => PendingProject) private _pendingProjects; // nameHash → PendingProject
-mapping(bytes32 => mapping(address => bool)) private _authorizedTokens; // nameHash → token → bool
-mapping(address => uint256) public reporterScore;         // address → report count
-```
+### Authority Model
 
-### Project Name Normalization
+Early phase:
 
-All project names are normalized before storage: lowercased and trimmed. This prevents trivial duplicates ("MyProject" = "myproject" = "  MYPROJECT  "). Normalization uses `StringUtils.normalize()`.
+- bootstrap governance starts from the EVM wallet that controls `tethics.eth`
+- that root designates the initial Solana curator authority
+- EVM permissions are exercised on EVM
+- Solana permissions are exercised on Solana
 
-Valid names: 2–64 characters, alphanumeric + hyphens + underscores (`[a-z0-9\-_]` after normalization).
+Later phases:
 
-### Registration Flow
-
-```
-Founder → register("projectname", proofs[]) →
-  1. Validate name (isValidName)
-  2. Check not already registered AND not already pending
-  3. Validate proofs - ecrecover for DEPLOYER_SIG happens immediately
-  4. Store in _pendingProjects with submittedAt = block.timestamp
-  5. Emit RegistrationSubmitted (visible onchain immediately)
-
-Owner/Approver → approveRegistration("projectname") →
-  1. Load from _pendingProjects
-  2. Move to _projects with challengeDeadline = block.timestamp + 48h
-  3. Delete pending entry
-  4. Emit RegistrationApproved + ProjectRegistered
-
-Owner/Approver → rejectRegistration("projectname", "reason") →
-  1. Delete from _pendingProjects
-  2. Emit RegistrationRejected
-  (Founder may re-apply after rejection)
-```
-
-### Verification Proofs
-
-See [VERIFICATION.md](VERIFICATION.md) for full details.
-
-Minimum 2 proofs from different categories:
-- `PROOF_DEPLOYER_SIG (1)`: ECDSA sig from deployer wallet, verified onchain via ecrecover
-- `PROOF_ENS (2)`: ENS name claim (stored as hash, verified off-chain)
-- `PROOF_DNS_TXT (3)`: DNS TXT record hash (off-chain anchor)
-- `PROOF_GITHUB (4)`: GitHub attestation hash (off-chain anchor)
-- `PROOF_CONTRACT_OWNER (5)`: Existing contract ownership claim (off-chain anchor)
-
-### Challenge Period
-
-After registration, a 48-hour window allows disputes. During this window, anyone can call `disputeRegistration()` with stronger proofs to challenge ownership. After the window closes, registration is final.
-
-### Token Authorization
-
-Only the registered founder can authorize or revoke token contracts. Once authorized, `isAuthorized(name, tokenAddress)` returns `true`: this is the core primitive for wallets and frontends.
-
-### Reporting
-
-Any address can call `reportUnauthorizedToken(name, tokenAddress)` if the token is not in the authorized list. This:
-1. Increments `reporterScore[reporter]`
-2. Emits `UnauthorizedTokenReported`
-3. Forwards to the linked Shield contract (non-reverting)
+- delegated approvers on both ecosystems
+- public challenge workflow
+- community review and governance
 
 ---
 
-## Layer 2: Shield
+## Layer 2: Chain Authorization
 
-**Files:** `contracts/src/Shield.sol`, `contracts/src/ShieldFactory.sol`
+Authorization is chain-specific.
 
-Each registered founder can deploy exactly one Shield via `ShieldFactory.deployShield()`. The factory uses CREATE2 so the Shield address is deterministic from (founder, projectName).
+## EVM Authorization
 
-### Charity Drain
+The EVM implementation lives in:
 
-The core economic mechanism:
+- [Registry.sol](/Users/swarnava/Documents/Projects/tethics/contracts/src/Registry.sol)
+- [ShieldFactory.sol](/Users/swarnava/Documents/Projects/tethics/contracts/src/ShieldFactory.sol)
+- [Shield.sol](/Users/swarnava/Documents/Projects/tethics/contracts/src/Shield.sol)
 
-```
-Unauthorized token enters Shield
-    → IERC20.approve(swapRouter, balance)
-    → DEX.exactInputSingle(token → WETH)
-    → shield.balance += ETH
-    → ETH.transfer(charityAddress)
-```
+### EVM Responsibilities
 
-**Single-transaction path:** founder never has custody. If the swap fails (no liquidity), tokens are held and anyone can retry by calling `drainToken()` again later.
+- register projects
+- approve or reject pending projects
+- authorize token contracts
+- revoke token contracts
+- record unauthorized token reports
 
-**Charity address is immutable:** set at Shield deployment, cannot be changed. This prevents the founder from routing to themselves.
+### EVM Notes
 
-### Attestation Events
+- Base is the first production target
+- Shield remains optional for v1 product value
+- reliable authorization state matters more than aggressive routing mechanics
 
-The Shield emits rich events that allow complete reconstruction of history without reading contract storage:
+## Solana Authorization
 
-```solidity
-event ShieldActive(projectName, shieldAddress, charityAddress)
-event UnauthorizedTokenDetected(projectName, tokenContract, reporter)
-event FundsRoutedToCharity(tokenContract, amount, charityAddress)
-event FundsHeldPendingRetry(tokenContract, amount, reason)
-event BuyersNotified(unauthorizedToken, holderCount, caller)
-```
+The production target is a native Solana registry program.
 
-### Buyer Notification
+### Solana Responsibilities
 
-Any address can call `Shield.notifyBuyers(unauthorizedToken, holders[])` with a list of holder addresses (off-chain determined). This:
-- Rate-limits notifications: 1 per holder per token per 24h
-- Increments per-holder notification count (for reputation)
-- Emits `BuyersNotified` event
+- approve projects and founder identities
+- authorize launch wallets
+- authorize mints
+- publish unauthorized launch determinations
+- preserve review history and evidence references
+- delegate approver and reviewer roles on Solana
 
-The holder list comes from the Watcher (Layer 4) scanning token transfer events off-chain.
+### Solana Notes
 
-### Factory (CREATE2)
-
-`ShieldFactory.deployShield(projectName, charityAddress)` deploys a Shield with a deterministic address. Only the registered founder can deploy their Shield. The factory automatically calls `Registry.linkShield()` to link the deployed Shield.
-
-```solidity
-bytes32 salt = keccak256(abi.encodePacked(founder, keccak256(bytes(normalized))));
-// CREATE2 deployed at predictable address
-```
+- `tethics.sol` or `swarnava.sol` may be the initial public curator identity, but authority must be represented by Solana-native signer control
+- signed attestations can still exist as mirrors or artifacts, but they are not the long-term governance layer
+- Solana projects should not depend on EVM review transactions for authoritative approval
 
 ---
 
-## Layer 3: Static Frontend
+## Layer 3: Detection And Evidence
 
-**Directory:** `frontend/`
+This layer discovers suspicious launches and enriches them with venue-specific context.
 
-A single-page application with hash-based routing. No build step: just HTML, CSS, and ES modules loaded via CDN.
+### Components
 
-### Pages
+- EVM watchers
+- Solana watchers
+- venue adapters
+- shared matcher
+- evidence generator
 
-| Route | Purpose |
-|-------|---------|
-| `#/` | Home / Project search |
-| `#/register` | Guided registration flow |
-| `#/dashboard` | Founder management dashboard |
-| `#/verify/:name` | Public verification page (shareable) |
-| `#/leaderboard` | Top reporters by score |
+### Design Rules
 
-### Hosting
+- raw venue data must be preserved
+- matching must be explainable
+- confidence scores must be accompanied by evidence
+- automated detectors may propose decisions, but reviewer-confirmed state is authoritative for negative verdicts
 
-Deployable to:
-- **IPFS** via Fleek or Pinata (free tier)
-- **ENS** domain `tethics.eth` pointing to IPFS hash
-- **GitHub Pages** as a fallback
+## Bags Adapter
 
-### Wallet Integration
+The first Solana venue adapter should target Bags.fm.
 
-Uses [viem v2](https://viem.sh/) for chain interaction. Compatible with MetaMask, Coinbase Wallet, WalletConnect (via `window.ethereum`).
+Responsibilities:
+
+- ingest launches
+- fetch creator/provider metadata
+- compare against approved project and wallet sets
+- emit `AUTHORIZED`, `PENDING_REVIEW`, or `UNKNOWN`
+- create evidence bundles for reviewer confirmation
+
+The Bags adapter is specified in:
+
+- [BAGS-ADAPTER.md](/Users/swarnava/Documents/Projects/tethics/docs/BAGS-ADAPTER.md)
 
 ---
 
-## Layer 4: Watcher CLI
+## Layer 4: Distribution And Verification
 
-**Directory:** `watcher/`
+This layer exposes the product to users and integrators.
 
-A TypeScript CLI tool that community members run locally to detect unauthorized tokens.
+### Public Surfaces
 
-```bash
-npx tethics-watcher --chain base --rpc <URL> --reporter-key <KEY>
+- the web app, rooted in the trust model of `tethics.eth`
+- project verification pages by slug and asset
+- warning pages for unauthorized launches
+- public feeds / APIs
+
+### Internal Surfaces
+
+- approver dashboard
+- pending review queue
+- report evidence viewer
+- project management dashboard
+
+### Query Types
+
+- verify by slug + asset
+- reverse lookup by asset
+- list project authorized assets
+- list active unauthorized reports
+
+---
+
+## Target Repo Shape
+
+```text
+contracts/         EVM contracts
+solana/            Solana attestation tooling and later program
+watchers/evm/      EVM watchers
+watchers/solana/   Solana venue watchers
+frontend/          Web app
+shared/            Shared schemas and normalization
+docs/              Product, architecture, and integration docs
 ```
 
-### Detection Flow
-
-```
-1. Subscribe to factory events (Uniswap V3, V2 clones)
-2. New token detected → extract name/symbol
-3. Normalize name → query Registry for fuzzy matches
-4. If match found AND token NOT authorized → reportUnauthorizedToken()
-5. Optionally: scan token transfers for holders → notifyBuyers()
-```
-
-### Incentives
-
-Reporter pays their own gas. Incentive is onchain reputation (`reporterScore`) and community goodwill. The leaderboard in the frontend surfaces top reporters.
+The current repo is not yet organized this way, but future work should move toward it.
 
 ---
 
-## Security Properties
+## Source Of Truth Model
 
-### Immutability
+## Authoritative
 
-- Registry has no upgrade mechanism; the owner can only approve/reject registrations and manage approvers
-- Shield charity address is immutable post-deployment
-- ShieldFactory just deploys: no ongoing state
-- The governance key (owner) can be renounced by transferring to `address(0)` to make the registry fully ownerless
+- EVM contract state and events for EVM projects and assets
+- Solana program state and events for Solana projects and assets
+- explicit reviewer actions on the relevant chain
 
-### Impersonation Resistance
+## Indexed / Derived
 
-To impersonate a registered project, an attacker must:
-- Compromise the founder's private key (for DEPLOYER_SIG proof), AND
-- Control the founder's ENS name or DNS record (for second proof)
+- search indexes
+- normalized venue launch objects
+- confidence scores
+- verification page caches
 
-These are independent systems: compromising one doesn't compromise the other.
-
-### Griefing Resistance
-
-- Name squatting: 48-hour challenge window + multi-proof requirement
-- Charity griefing: charity address is set to a known-good address at deployment; if it reverts, ETH is held (not lost)
-- Reporter spam: reporterScore only increases for unauthorized tokens (can't spam authorized ones)
-- Notification spam: 24-hour rate limit per holder per token
-
-### Economic Security
-
-The charity drain makes unauthorized token ownership economically worthless if the Shield is active. Any proceeds that flow to the Shield address get routed to charity, not the scammer.
+Derived data may speed up the product, but it must not silently override authoritative records.
 
 ---
 
-## Gas Costs (Base L2 estimates)
+## Verification Semantics
 
-| Operation | Approx Gas | Approx Cost (0.1 Gwei) |
-|-----------|-----------|------------------------|
-| `register()` | ~180,000 | ~$0.018 |
-| `approveRegistration()` | ~80,000 | ~$0.008 |
-| `rejectRegistration()` | ~40,000 | ~$0.004 |
-| `deployShield()` | ~800,000 | ~$0.08 |
-| `reportUnauthorizedToken()` | ~50,000 | ~$0.005 |
-| `authorizeToken()` | ~50,000 | ~$0.005 |
-| `drainToken()` | ~100,000 + swap | ~$0.01+ |
-| `notifyBuyers(N holders)` | ~20,000 + N*5,000 | ~$0.002+ |
+Every verification surface should use the same status model:
 
-*Base L2 has ~10x lower gas costs than Ethereum mainnet.*
+- `AUTHORIZED`
+- `UNAUTHORIZED`
+- `PENDING_REVIEW`
+- `UNKNOWN`
+- `REVOKED`
+
+### Meanings
+
+- `AUTHORIZED`
+  Positive authorization exists
+- `UNAUTHORIZED`
+  A reviewer or authoritative source has explicitly disavowed the asset
+- `PENDING_REVIEW`
+  Strong suspicious evidence exists but final review is not complete
+- `UNKNOWN`
+  No authoritative positive or negative record exists
+- `REVOKED`
+  Prior authorization was explicitly withdrawn
+
+This vocabulary should be reused everywhere: contracts, JSON feeds, frontend badges, and reviewer tools.
 
 ---
 
-## Deployment Bootstrap
+## Security And Product Constraints
 
-Registry and ShieldFactory have a circular dependency:
-- Registry needs the ShieldFactory address (to validate `linkShield` caller)
-- ShieldFactory needs the Registry address (to call `linkShield`)
+1. Early correctness is more important than premature decentralization.
+2. Negative verdicts must be transparent and reviewable.
+3. Venue metadata is useful evidence, not unquestionable truth.
+4. Solana support should optimize for speed of credible disavowal.
+5. Onchain storage should hold core state, not every piece of evidence.
 
-**Solution:** Use Ethereum nonce pre-computation. Since contract addresses are deterministic from (deployer, nonce), we can predict the ShieldFactory address before deploying it, then pass that to the Registry constructor.
+---
 
-See `script/Deploy.s.sol` for the implementation.
+## Current Implementation Gap
+
+The current implementation in this repository is still mostly:
+
+- EVM-first
+- Base-focused
+- contract-centric
+
+The target architecture extends that model by adding:
+
+- Solana founder identities
+- Bags launch detection
+- signed attestation records
+- unified verification semantics
+- reviewer-oriented moderation workflows
+
+Use this document as the target architecture for the next implementation phase.
+
+---
+
+## Related Docs
+
+- [PROJECT-PLAN.md](/Users/swarnava/Documents/Projects/tethics/docs/PROJECT-PLAN.md)
+- [SCHEMA.md](/Users/swarnava/Documents/Projects/tethics/docs/SCHEMA.md)
+- [SOLANA-MVP.md](/Users/swarnava/Documents/Projects/tethics/docs/SOLANA-MVP.md)
+- [BAGS-ADAPTER.md](/Users/swarnava/Documents/Projects/tethics/docs/BAGS-ADAPTER.md)
+- [THREAT-MODEL.md](/Users/swarnava/Documents/Projects/tethics/docs/THREAT-MODEL.md)

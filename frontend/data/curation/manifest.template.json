@@ -1,0 +1,41 @@
+{
+  "slug": "example",
+  "displayName": "Example",
+  "description": "Replace with the real project description.",
+  "website": "https://example.com",
+  "socials": {
+    "ens": "example.eth",
+    "sns": "example.sol",
+    "github": "org/repo"
+  },
+  "founderWallets": [
+    "<FOUNDERS_SOLANA_WALLET>"
+  ],
+  "linkedEvmWallets": [],
+  "proofIds": [
+    "proof_example_sns"
+  ],
+  "launchWallets": [
+    {
+      "address": "<APPROVED_BAGS_CREATOR_WALLET>",
+      "label": "approved Bags creator wallet",
+      "venue": "BAGS",
+      "note": "Used for official Bags launches"
+    }
+  ],
+  "venueProfiles": [
+    {
+      "venue": "BAGS",
+      "handles": [
+        "example"
+      ],
+      "creatorWallets": [
+        "<APPROVED_BAGS_CREATOR_WALLET>"
+      ],
+      "metadata": {
+        "note": "Replace with real venue metadata"
+      }
+    }
+  ],
+  "authorizedMints": []
+}

@@ -28,7 +28,7 @@ tethics is a public utility that:
 - **Cryptographically rigorous verification:** Minimum 2 independent proofs (onchain + off-chain).
 - **Founders who want tokens are not blocked:** The system creates a verifiable yes/no: "Did the founder authorize this token?"
 - **Fully open source:** MIT licensed. Fork it, deploy it anywhere.
-- **Ownerless contracts:** No admin keys, no upgrades, no multisig. Public utility.
+- **Two deployment modes:** immutable core deployment, or upgradeable reference deployment for the coordination layer.
 
 ---
 
@@ -145,6 +145,48 @@ npm run build
 node dist/index.js --chain base --rpc <RPC_URL> --reporter-key <KEY> --dry-run
 ```
 
+### Cross-Chain Tooling
+
+```bash
+# Install all workspace dependencies
+npm install
+
+# Build the shared, Solana, Bags, and EVM watcher packages
+npm run build:ts
+
+# Re-evaluate a local Bags launch fixture against the static project records
+node watchers/solana/bags/dist/main.js recheck \
+  --launch-file watchers/solana/bags/fixtures/sample-launch.json
+
+# Query Bags creator data for a mint and emit records output
+node watchers/solana/bags/dist/main.js mint \
+  --mint <SOLANA_MINT> \
+  --token-name <NAME> \
+  --token-symbol <SYMBOL>
+```
+
+### Curator Attestations
+
+```bash
+# Create an unsigned project approval attestation
+npx tethics-solana create-project-approval \
+  --issuer <YOUR_TETHICS_SOL_PUBLIC_KEY> \
+  --slug myproject \
+  --display-name "My Project" \
+  --founder-wallets <SOLANA_WALLET_1>,<SOLANA_WALLET_2> \
+  --output frontend/data/curation/myproject-project-approval.unsigned.json
+
+# Sign it with a Solana keypair file or TETHICS_SOL_SECRET_KEY
+npx tethics-solana sign-attestation \
+  --input frontend/data/curation/myproject-project-approval.unsigned.json \
+  --output frontend/data/curation/myproject-project-approval.signed.json \
+  --secret-key-file /path/to/solana-keypair.json
+
+# Verify the signed attestation
+npx tethics-solana verify-attestation \
+  --input frontend/data/curation/myproject-project-approval.signed.json
+```
+
 ---
 
 ## Deployment
@@ -164,6 +206,42 @@ forge script script/Deploy.s.sol --rpc-url $BASE_RPC --broadcast --verify
 ```
 
 The deploy script uses nonce pre-computation to bootstrap the circular dependency between Registry and ShieldFactory. See `script/Deploy.s.sol` for details.
+
+### Upgradeable Reference Deployment
+
+```bash
+forge script script/DeployUpgradeable.s.sol --rpc-url $BASE_SEPOLIA_RPC --broadcast --verify
+```
+
+This deploys proxy-based reference contracts for the registry and shield factory. Individual Shield instances remain immutable.
+Approved Solana mints and Bags creator identities are also stored as first-class onchain registry records, alongside EVM token authorization.
+
+## Web Frontend
+
+The web surface lives entirely under `frontend/`:
+
+- `frontend/index.html` - public landing page
+- `frontend/app.html` - application shell
+- `frontend/css/` - shared styling
+- `frontend/js/` - browser clients and UI logic
+- `frontend/assets/` - TETHICS brand assets
+
+There is no root-level web entrypoint. Serve `frontend/` as the static site directory.
+
+## Planning Docs
+
+- `docs/PROJECT-PLAN.md` - detailed product roadmap for finishing tethics, including Solana and Bags.fm support
+- `docs/PRODUCTION-ARCHITECTURE-PLAN.md` - production-grade chain-native governance plan rooted in `tethics.eth`
+- `docs/ARCHITECTURE.md` - target cross-chain architecture
+- `docs/ONCHAIN-UI-SPEC.md` - static frontend plus onchain-state implementation spec
+- `docs/DEPLOYMENT-CHECKLIST.md` - concrete rollout checklist for the upgraded registry and static frontend
+- `docs/SECURITY-AUDIT.md` - internal hardening findings, fixes, and residual risks
+- `docs/UPGRADEABILITY.md` - proxy-based reference deployment model
+- `docs/SCHEMA.md` - canonical shared data model across EVM, Solana, and venue adapters
+- `docs/SOLANA-MVP.md` - Solana implementation spec for the first release
+- `docs/UI-PARITY-IMPLEMENTATION.md` - frontend refactor plan for true EVM/Solana parity
+- `docs/BAGS-ADAPTER.md` - Bags.fm detection and evidence adapter spec
+- `docs/THREAT-MODEL.md` - current threat model
 
 ---
 
@@ -240,8 +318,11 @@ tethics/
 │   │   └── libraries/            # VerificationLib, StringUtils
 │   ├── test/                     # 37 tests across 4 suites
 │   └── script/                   # Deploy + example scripts
-├── frontend/                     # Static HTML/CSS/JS SPA
-├── watcher/                      # TypeScript CLI detector
+├── frontend/                     # Landing page + app shell + static assets
+├── watcher/                      # Legacy TypeScript CLI detector
+├── watchers/                     # Venue-specific watcher packages
+├── shared/                       # Shared schema/types package
+├── solana/                       # Solana CLI + native program scaffold
 └── docs/                         # Architecture, threat model, etc.
 ```
 

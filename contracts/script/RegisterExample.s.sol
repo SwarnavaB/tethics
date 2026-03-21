@@ -16,7 +16,7 @@ import {StringUtils} from "../src/libraries/StringUtils.sol";
 ///     --broadcast \
 ///     -e PRIVATE_KEY=<founder-key> \
 ///     -e PROJECT_NAME=myproject \
-///     -e CHARITY_ADDRESS=<charity-address> \
+///     -e CHARITY_ID=<approved-charity-id> \
 ///     -e REGISTRY_ADDRESS=<registry-address> \
 ///     -e FACTORY_ADDRESS=<factory-address>
 contract RegisterExample is Script {
@@ -24,13 +24,13 @@ contract RegisterExample is Script {
         uint256 founderKey = vm.envUint("PRIVATE_KEY");
         address founder = vm.addr(founderKey);
         string memory projectName = vm.envString("PROJECT_NAME");
-        address charityAddress = vm.envAddress("CHARITY_ADDRESS");
+        uint256 charityId = vm.envUint("CHARITY_ID");
         address registryAddress = vm.envAddress("REGISTRY_ADDRESS");
         address factoryAddress = vm.envAddress("FACTORY_ADDRESS");
 
         console.log("Founder:", founder);
         console.log("Project:", projectName);
-        console.log("Charity:", charityAddress);
+        console.log("Charity ID:", charityId);
 
         Registry registry = Registry(registryAddress);
         ShieldFactory factory = ShieldFactory(factoryAddress);
@@ -44,8 +44,8 @@ contract RegisterExample is Script {
         registry.register(projectName, proofs);
         console.log("Registration successful!");
 
-        console.log("Deploying Shield with charity:", charityAddress);
-        address shield = factory.deployShield(projectName, charityAddress);
+        console.log("Deploying Shield with charity id:", charityId);
+        address shield = factory.deployShield(projectName, charityId);
         console.log("Shield deployed at:", shield);
 
         vm.stopBroadcast();
@@ -54,7 +54,7 @@ contract RegisterExample is Script {
         console.log("Project: ", normalized);
         console.log("Founder: ", founder);
         console.log("Shield:  ", shield);
-        console.log("Charity: ", charityAddress);
+        console.log("Charity ID:", charityId);
     }
 
     function _buildProofs(

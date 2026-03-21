@@ -1,0 +1,12 @@
+{
+  "id": "bags_launch_tethics_sample",
+  "mint": "So11111111111111111111111111111111111111112",
+  "tokenName": "tethics",
+  "tokenSymbol": "TETHICS",
+  "creatorWallet": "11111111111111111111111111111111",
+  "provider": "bags",
+  "providerUsername": "tethics",
+  "url": "https://bags.fm/sample/tethics",
+  "signature": "5ampleSignaturePlaceholder",
+  "detectedAt": "2026-03-21T00:00:00.000Z"
+}

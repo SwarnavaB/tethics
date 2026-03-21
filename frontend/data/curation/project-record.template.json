@@ -1,0 +1,108 @@
+{
+  "id": "project_example",
+  "slug": "example",
+  "displayName": "Example",
+  "description": "Replace with a real project description.",
+  "website": "https://example.com",
+  "socials": {
+    "ens": "example.eth",
+    "sns": "example.sol",
+    "github": "org/repo"
+  },
+  "status": "APPROVED",
+  "createdAt": "2026-03-21T00:00:00.000Z",
+  "updatedAt": "2026-03-21T00:00:00.000Z",
+  "approvedAt": "2026-03-21T00:00:00.000Z",
+  "approvedBy": [
+    {
+      "id": "curator_tethics",
+      "label": "tethics.eth / tethics.sol curator"
+    }
+  ],
+  "founderIdentities": [
+    {
+      "id": "founder_identity_example_solana",
+      "ecosystem": "SOLANA",
+      "chain": "solana",
+      "address": "<FOUNDERS_SOLANA_WALLET>",
+      "label": "primary founder wallet",
+      "isPrimary": true,
+      "proofIds": [
+        "proof_example_sns"
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "proof_example_sns",
+      "projectId": "project_example",
+      "type": "SNS",
+      "ecosystem": "SOLANA",
+      "chain": "solana",
+      "submittedBy": "curator_tethics",
+      "submittedAt": "2026-03-21T00:00:00.000Z",
+      "status": "VERIFIED",
+      "verifiedAt": "2026-03-21T00:00:00.000Z",
+      "verifiedBy": "curator_tethics",
+      "payload": {
+        "type": "SNS",
+        "name": "example.sol"
+      },
+      "anchors": [
+        {
+          "kind": "ACCOUNT",
+          "value": "example.sol",
+          "chain": "solana"
+        }
+      ]
+    }
+  ],
+  "chainProfiles": [
+    {
+      "id": "chain_profile_example_solana",
+      "projectId": "project_example",
+      "ecosystem": "SOLANA",
+      "chain": "solana",
+      "status": "APPROVED",
+      "launchWallets": [
+        {
+          "id": "launch_wallet_example_bags",
+          "address": "<APPROVED_BAGS_CREATOR_WALLET>",
+          "ecosystem": "SOLANA",
+          "chain": "solana",
+          "label": "approved Bags creator wallet",
+          "status": "AUTHORIZED"
+        }
+      ],
+      "authorizedAssets": [],
+      "venueProfiles": [
+        {
+          "id": "venue_profile_example_bags",
+          "venue": "BAGS",
+          "ecosystem": "SOLANA",
+          "chain": "solana",
+          "status": "AUTHORIZED",
+          "handles": [
+            "example"
+          ],
+          "creatorWallets": [
+            "<APPROVED_BAGS_CREATOR_WALLET>"
+          ],
+          "metadata": {
+            "note": "Replace template values with real project launch data."
+          }
+        }
+      ]
+    }
+  ],
+  "policy": {
+    "autoAuthorizeLaunchWalletMints": false,
+    "requireManualReviewForVenueMismatch": true,
+    "allowedVenues": [
+      "BAGS"
+    ]
+  },
+  "tags": [
+    "curated"
+  ]
+}

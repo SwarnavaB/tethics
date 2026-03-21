@@ -35,8 +35,12 @@ contract ShieldFactory {
     // ─── Errors ───────────────────────────────────────────────────────────────
 
     error InvalidCharity();
+    error InvalidRouter();
+    error InvalidWrappedNative();
     error DeploymentFailed();
     error ProjectNotRegistered();
+    error NotFounder(address caller, address founder);
+    error InactiveCharityOption(uint256 charityId);
 
     // ─── Constructor ─────────────────────────────────────────────────────────
 
@@ -53,33 +57,39 @@ contract ShieldFactory {
 
     /// @notice Deploy a Shield for a registered project
     /// @param projectName The project name (must already be registered in Registry)
-    /// @param charityAddress Charity address to receive all drained funds
+    /// @param charityId Approved charity option id selected by the founder
     /// @return shield Address of the newly deployed Shield contract
-    function deployShield(string calldata projectName, address charityAddress)
+    function deployShield(string calldata projectName, uint256 charityId)
         external
         returns (address shield)
     {
-        return deployShieldWithRouter(projectName, charityAddress, defaultSwapRouter, defaultWeth);
+        return deployShieldWithRouter(projectName, charityId, defaultSwapRouter, defaultWeth);
     }
 
     /// @notice Deploy a Shield with a custom swap router (for non-default DEX)
     /// @param projectName The project name (must already be registered in Registry)
-    /// @param charityAddress Charity address
+    /// @param charityId Approved charity option id
     /// @param swapRouter Custom DEX router address
     /// @param weth WETH / output token address
     /// @return shield Address of the newly deployed Shield contract
     function deployShieldWithRouter(
         string calldata projectName,
-        address charityAddress,
+        uint256 charityId,
         address swapRouter,
         address weth
     ) public returns (address shield) {
+        if (swapRouter == address(0)) revert InvalidRouter();
+        if (weth == address(0)) revert InvalidWrappedNative();
+
+        IRegistry.CharityOptionView memory charityOption = IRegistry(registry).getCharityOption(charityId);
+        if (!charityOption.exists || !charityOption.active) revert InactiveCharityOption(charityId);
+        address charityAddress = charityOption.payoutAddress;
         if (charityAddress == address(0)) revert InvalidCharity();
 
         // Only the registered founder may deploy their Shield
         address founder = IRegistry(registry).getFounder(projectName);
         if (founder == address(0)) revert ProjectNotRegistered();
-        require(msg.sender == founder, "ShieldFactory: caller is not founder");
+        if (msg.sender != founder) revert NotFounder(msg.sender, founder);
 
         string memory normalized = StringUtils.normalize(projectName);
 
@@ -87,9 +97,12 @@ contract ShieldFactory {
         bytes32 salt = keccak256(abi.encodePacked(founder, keccak256(bytes(normalized))));
 
         // Deploy Shield via CREATE2
-        bytes memory bytecode = abi.encodePacked(
-            type(Shield).creationCode,
-            abi.encode(normalized, charityAddress, registry, founder, swapRouter, weth)
+        bytes memory bytecode = _buildShieldCreationCode(
+            normalized,
+            charityAddress,
+            founder,
+            swapRouter,
+            weth
         );
 
         assembly {
@@ -106,31 +119,30 @@ contract ShieldFactory {
 
     // ─── View Functions ────────────────────────────────────────────────────────
 
-    /// @notice Predict the Shield address for a given founder + project name (before deployment)
+    /// @notice Predict the Shield address for a given founder + project name + charity selection (before deployment)
     /// @param founder Founder address
     /// @param projectName Normalized project name
+    /// @param charityId Approved charity option id used at deployment time
     /// @return predicted Predicted Shield contract address
-    function predictShieldAddress(address founder, string calldata projectName)
+    function predictShieldAddress(address founder, string calldata projectName, uint256 charityId)
         external
         view
         returns (address predicted)
     {
+        IRegistry.CharityOptionView memory charityOption = IRegistry(registry).getCharityOption(charityId);
+        if (!charityOption.exists || !charityOption.active) revert InactiveCharityOption(charityId);
+        address charityAddress = charityOption.payoutAddress;
+        if (charityAddress == address(0)) revert InvalidCharity();
         string memory normalized = StringUtils.normalize(projectName);
         bytes32 salt = keccak256(abi.encodePacked(founder, keccak256(bytes(normalized))));
 
-        bytes32 initCodeHash = keccak256(
-            abi.encodePacked(
-                type(Shield).creationCode,
-                abi.encode(
-                    normalized,
-                    address(0), // charity placeholder - address varies per deployment
-                    registry,
-                    founder,
-                    defaultSwapRouter,
-                    defaultWeth
-                )
-            )
-        );
+        bytes32 initCodeHash = keccak256(_buildShieldCreationCode(
+            normalized,
+            charityAddress,
+            founder,
+            defaultSwapRouter,
+            defaultWeth
+        ));
 
         predicted = address(
             uint160(
@@ -138,6 +150,19 @@ contract ShieldFactory {
                     keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, initCodeHash))
                 )
             )
+        );
+    }
+
+    function _buildShieldCreationCode(
+        string memory normalized,
+        address charityAddress,
+        address founder,
+        address swapRouter,
+        address weth
+    ) internal view returns (bytes memory) {
+        return abi.encodePacked(
+            type(Shield).creationCode,
+            abi.encode(normalized, charityAddress, registry, founder, swapRouter, weth)
         );
     }
 }

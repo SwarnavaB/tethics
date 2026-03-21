@@ -16,6 +16,8 @@ contract RegistryTest is Test {
 
     uint256 public founderKey = 0xA11CE;
     address public founder;
+    uint256 public challengerKey = 0xB0B;
+    address public challenger;
 
     event ProjectRegistered(bytes32 indexed nameHash, string name, address indexed founder, uint256 challengeDeadline);
     event RegistrationSubmitted(bytes32 indexed nameHash, string name, address indexed founder, uint256 submittedAt);
@@ -27,10 +29,61 @@ contract RegistryTest is Test {
     event ShieldLinked(bytes32 indexed nameHash, address indexed shieldContract);
     event ApproverAdded(address indexed approver);
     event ApproverRemoved(address indexed approver);
+    event CharityManagerAdded(address indexed manager);
+    event CharityManagerRemoved(address indexed manager);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event ExternalClaimSubmitted(
+        uint256 indexed claimId,
+        bytes32 indexed nameHash,
+        string name,
+        string ecosystem,
+        address indexed proposer,
+        bytes32 payloadHash,
+        string metadataURI
+    );
+    event ExternalClaimReviewed(
+        uint256 indexed claimId,
+        bytes32 indexed nameHash,
+        string name,
+        string ecosystem,
+        address indexed reviewer,
+        bool approved,
+        bytes32 resolutionHash,
+        string resolutionURI,
+        string reviewNotes
+    );
+    event ExternalAssetAuthorized(
+        bytes32 indexed nameHash,
+        bytes32 indexed assetKey,
+        string name,
+        string ecosystem,
+        string assetType,
+        string assetId,
+        address indexed actor,
+        string metadataURI
+    );
+    event ExternalAssetRevoked(
+        bytes32 indexed nameHash,
+        bytes32 indexed assetKey,
+        string name,
+        string ecosystem,
+        string assetType,
+        string assetId,
+        address indexed actor,
+        string metadataURI
+    );
+    event CharityOptionConfigured(
+        uint256 indexed charityId,
+        string name,
+        address indexed payoutAddress,
+        string metadataURI,
+        bool active,
+        address indexed actor
+    );
 
     function setUp() public {
         founder = vm.addr(founderKey);
+        challenger = vm.addr(challengerKey);
         // Test contract (address(this)) becomes the owner
         registry = new Registry(factory);
     }
@@ -75,6 +128,15 @@ contract RegistryTest is Test {
         proofs = new VerificationLib.Proof[](2);
         proofs[0] = _makeDeployerSigProof(founder, founderKey, name, founder);
         proofs[1] = _makeENSProof("myproject.eth");
+    }
+
+    function _getProofsFor(address signer, uint256 signerKey, string memory name, string memory ensName)
+        internal
+        returns (VerificationLib.Proof[] memory proofs)
+    {
+        proofs = new VerificationLib.Proof[](2);
+        proofs[0] = _makeDeployerSigProof(signer, signerKey, name, signer);
+        proofs[1] = _makeENSProof(ensName);
     }
 
     /// @dev Register and approve a project. Test contract is owner so no prank needed for approve.
@@ -256,6 +318,142 @@ contract RegistryTest is Test {
         registry.register("myproject", proofs);
     }
 
+    function test_submitExternalClaim_success() public {
+        bytes32 payloadHash = keccak256("proposal");
+        bytes32 expectedHash = StringUtils.nameHash("myproject");
+
+        vm.prank(founder);
+        vm.expectEmit(true, true, false, true);
+        emit ExternalClaimSubmitted(
+            1,
+            expectedHash,
+            "myproject",
+            "SOLANA",
+            founder,
+            payloadHash,
+            "ipfs://proposal"
+        );
+        uint256 claimId = registry.submitExternalClaim("myproject", "SOLANA", payloadHash, "ipfs://proposal");
+
+        IRegistry.ExternalClaimView memory claim = registry.getExternalClaim(claimId);
+        assertTrue(claim.exists);
+        assertFalse(claim.reviewed);
+        assertEq(claim.claimId, 1);
+        assertEq(claim.nameHash, expectedHash);
+        assertEq(claim.name, "myproject");
+        assertEq(claim.ecosystem, "SOLANA");
+        assertEq(claim.proposer, founder);
+        assertEq(claim.payloadHash, payloadHash);
+        assertEq(claim.metadataURI, "ipfs://proposal");
+    }
+
+    function test_submitExternalClaim_requiresPayloadHash() public {
+        vm.prank(founder);
+        vm.expectRevert(IRegistry.EmptyPayloadHash.selector);
+        registry.submitExternalClaim("myproject", "SOLANA", bytes32(0), "ipfs://proposal");
+    }
+
+    function test_reviewExternalClaim_success() public {
+        vm.prank(founder);
+        uint256 claimId = registry.submitExternalClaim(
+            "myproject",
+            "SOLANA",
+            keccak256("proposal"),
+            "ipfs://proposal"
+        );
+
+        bytes32 resolutionHash = keccak256("resolution");
+
+        vm.expectEmit(true, true, false, true);
+        emit ExternalClaimReviewed(
+            claimId,
+            StringUtils.nameHash("myproject"),
+            "myproject",
+            "SOLANA",
+            address(this),
+            true,
+            resolutionHash,
+            "ipfs://bundle",
+            "legitimate founder"
+        );
+        registry.reviewExternalClaim(
+            claimId,
+            true,
+            "legitimate founder",
+            resolutionHash,
+            "ipfs://bundle"
+        );
+
+        IRegistry.ExternalClaimView memory claim = registry.getExternalClaim(claimId);
+        assertTrue(claim.reviewed);
+        assertTrue(claim.approved);
+        assertEq(claim.reviewer, address(this));
+        assertEq(claim.resolutionHash, resolutionHash);
+        assertEq(claim.resolutionURI, "ipfs://bundle");
+        assertEq(claim.reviewNotes, "legitimate founder");
+    }
+
+    function test_reviewExternalClaim_nonApprover_reverts() public {
+        vm.prank(founder);
+        uint256 claimId = registry.submitExternalClaim(
+            "myproject",
+            "SOLANA",
+            keccak256("proposal"),
+            "ipfs://proposal"
+        );
+
+        vm.prank(alice);
+        vm.expectRevert(IRegistry.NotApprover.selector);
+        registry.reviewExternalClaim(claimId, false, "no authority", bytes32(0), "");
+    }
+
+    function test_reviewExternalClaim_cannotReviewTwice() public {
+        vm.prank(founder);
+        uint256 claimId = registry.submitExternalClaim(
+            "myproject",
+            "SOLANA",
+            keccak256("proposal"),
+            "ipfs://proposal"
+        );
+
+        registry.reviewExternalClaim(claimId, true, "approved", keccak256("bundle"), "ipfs://bundle");
+
+        vm.expectRevert(abi.encodeWithSelector(IRegistry.ExternalClaimAlreadyReviewed.selector, claimId));
+        registry.reviewExternalClaim(claimId, false, "rejected", keccak256("bundle-2"), "ipfs://bundle-2");
+    }
+
+    function test_reviewExternalClaim_requiresResolutionHash() public {
+        vm.prank(founder);
+        uint256 claimId = registry.submitExternalClaim(
+            "myproject",
+            "SOLANA",
+            keccak256("proposal"),
+            "ipfs://proposal"
+        );
+
+        vm.expectRevert(IRegistry.MissingResolutionHash.selector);
+        registry.reviewExternalClaim(claimId, true, "approved", bytes32(0), "");
+    }
+
+    function test_submitExternalClaim_requiresMetadataURI() public {
+        vm.prank(founder);
+        vm.expectRevert(IRegistry.MissingMetadataURI.selector);
+        registry.submitExternalClaim("myproject", "SOLANA", keccak256("proposal"), "   ");
+    }
+
+    function test_reviewExternalClaim_requiresResolutionURI() public {
+        vm.prank(founder);
+        uint256 claimId = registry.submitExternalClaim(
+            "myproject",
+            "SOLANA",
+            keccak256("proposal"),
+            "ipfs://proposal"
+        );
+
+        vm.expectRevert(IRegistry.MissingResolutionURI.selector);
+        registry.reviewExternalClaim(claimId, true, "approved", keccak256("bundle"), "   ");
+    }
+
     function test_register_rejects_duplicate_proof_category() public {
         VerificationLib.Proof[] memory proofs = new VerificationLib.Proof[](2);
         proofs[0] = _makeDeployerSigProof(founder, founderKey, "myproject", founder);
@@ -264,6 +462,22 @@ contract RegistryTest is Test {
         vm.prank(founder);
         vm.expectRevert(VerificationLib.DuplicateProofCategory.selector);
         registry.register("myproject", proofs);
+    }
+
+    function test_disputeRegistration_doesNotAutoTransferFounder() public {
+        _registerProject("myproject");
+
+        VerificationLib.Proof[] memory challengerProofs = _getProofsFor(
+            challenger,
+            challengerKey,
+            "myproject",
+            "challenger.eth"
+        );
+
+        vm.prank(challenger);
+        registry.disputeRegistration("myproject", "contesting founder claim", challengerProofs);
+
+        assertEq(registry.getFounder("myproject"), founder);
     }
 
     // ─── Governance Tests ─────────────────────────────────────────────────────
@@ -323,6 +537,109 @@ contract RegistryTest is Test {
         registry.transferOwnership(alice);
     }
 
+    function test_transferOwnership_zeroAddress_reverts() public {
+        vm.expectRevert(IRegistry.ZeroOwner.selector);
+        registry.transferOwnership(address(0));
+    }
+
+    function test_addApprover_zeroAddress_reverts() public {
+        vm.expectRevert(IRegistry.InvalidApproverAddress.selector);
+        registry.addApprover(address(0));
+    }
+
+    function test_addCharityOption_onlyOwner() public {
+        vm.prank(alice);
+        vm.expectRevert(IRegistry.NotOwner.selector);
+        registry.addCharityOption("GiveDirectly", makeAddr("charity"), "ipfs://charity");
+    }
+
+    function test_addCharityManager_onlyOwner() public {
+        address manager = makeAddr("manager");
+
+        vm.prank(alice);
+        vm.expectRevert(IRegistry.NotOwner.selector);
+        registry.addCharityManager(manager);
+
+        vm.expectEmit(true, false, false, false);
+        emit CharityManagerAdded(manager);
+        registry.addCharityManager(manager);
+        assertTrue(registry.isCharityManager(manager));
+    }
+
+    function test_removeCharityManager_onlyOwner() public {
+        address manager = makeAddr("manager");
+        registry.addCharityManager(manager);
+
+        vm.prank(alice);
+        vm.expectRevert(IRegistry.NotOwner.selector);
+        registry.removeCharityManager(manager);
+
+        vm.expectEmit(true, false, false, false);
+        emit CharityManagerRemoved(manager);
+        registry.removeCharityManager(manager);
+        assertFalse(registry.isCharityManager(manager));
+    }
+
+    function test_addCharityOption_success() public {
+        address payout = makeAddr("charity");
+
+        vm.expectEmit(true, false, true, true);
+        emit CharityOptionConfigured(1, "GiveDirectly", payout, "ipfs://charity", true, address(this));
+        uint256 charityId = registry.addCharityOption("GiveDirectly", payout, "ipfs://charity");
+
+        IRegistry.CharityOptionView memory option = registry.getCharityOption(charityId);
+        assertEq(charityId, 1);
+        assertTrue(option.exists);
+        assertTrue(option.active);
+        assertEq(option.payoutAddress, payout);
+        assertEq(option.name, "GiveDirectly");
+    }
+
+    function test_updateCharityOption_success() public {
+        address payout = makeAddr("charity");
+        uint256 charityId = registry.addCharityOption("GiveDirectly", payout, "ipfs://charity");
+
+        address newPayout = makeAddr("newCharity");
+        registry.updateCharityOption(charityId, "Protocol Guild", newPayout, "ipfs://updated", false);
+
+        IRegistry.CharityOptionView memory option = registry.getCharityOption(charityId);
+        assertEq(option.name, "Protocol Guild");
+        assertEq(option.payoutAddress, newPayout);
+        assertEq(option.metadataURI, "ipfs://updated");
+        assertFalse(option.active);
+    }
+
+    function test_charityManager_canManageCharityCatalog() public {
+        address manager = makeAddr("manager");
+        registry.addCharityManager(manager);
+
+        vm.prank(manager);
+        uint256 charityId = registry.addCharityOption("GiveDirectly", makeAddr("charity"), "ipfs://charity");
+
+        vm.prank(manager);
+        registry.updateCharityOption(charityId, "Updated", makeAddr("charity2"), "ipfs://updated", false);
+
+        IRegistry.CharityOptionView memory option = registry.getCharityOption(charityId);
+        assertEq(option.name, "Updated");
+        assertFalse(option.active);
+    }
+
+    function test_addCharityOption_invalidInputs_revert() public {
+        vm.expectRevert(IRegistry.InvalidCharityName.selector);
+        registry.addCharityOption(" ", makeAddr("charity"), "ipfs://charity");
+
+        vm.expectRevert(IRegistry.InvalidCharityAddress.selector);
+        registry.addCharityOption("GiveDirectly", address(0), "ipfs://charity");
+
+        vm.expectRevert(IRegistry.MissingMetadataURI.selector);
+        registry.addCharityOption("GiveDirectly", makeAddr("charity"), " ");
+    }
+
+    function test_addCharityManager_zeroAddress_reverts() public {
+        vm.expectRevert(IRegistry.InvalidCharityManagerAddress.selector);
+        registry.addCharityManager(address(0));
+    }
+
     // ─── Token Authorization Tests ────────────────────────────────────────────
 
     function test_authorizeToken() public {
@@ -344,6 +661,14 @@ contract RegistryTest is Test {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(IRegistry.NotFounder.selector, alice, founder));
         registry.authorizeToken("myproject", token);
+    }
+
+    function test_authorizeToken_zeroAddress_reverts() public {
+        _registerProject("myproject");
+
+        vm.prank(founder);
+        vm.expectRevert(IRegistry.InvalidTokenContract.selector);
+        registry.authorizeToken("myproject", address(0));
     }
 
     function test_revokeToken() public {
@@ -402,6 +727,152 @@ contract RegistryTest is Test {
         registry.reportUnauthorizedToken("myproject", token);
     }
 
+    function test_reportUnauthorizedToken_duplicateReporter_reverts() public {
+        _registerProject("myproject");
+        address token = makeAddr("token");
+
+        vm.prank(alice);
+        registry.reportUnauthorizedToken("myproject", token);
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IRegistry.DuplicateUnauthorizedReport.selector, alice, token));
+        registry.reportUnauthorizedToken("myproject", token);
+    }
+
+    function test_authorizeExternalAsset_byFounder() public {
+        _registerProject("myproject");
+
+        bytes32 assetKey = keccak256(
+            abi.encodePacked("tethics:asset:", "solana", ":", "mint", ":", "So11111111111111111111111111111111111111112")
+        );
+
+        vm.prank(founder);
+        vm.expectEmit(true, true, true, true);
+        emit ExternalAssetAuthorized(
+            StringUtils.nameHash("myproject"),
+            assetKey,
+            "myproject",
+            "solana",
+            "mint",
+            "So11111111111111111111111111111111111111112",
+            founder,
+            "ipfs://mint-proof"
+        );
+        registry.authorizeExternalAsset(
+            "myproject",
+            "SOLANA",
+            "MINT",
+            "So11111111111111111111111111111111111111112",
+            "ipfs://mint-proof"
+        );
+
+        IRegistry.ExternalAssetView memory asset = registry.getExternalAsset(
+            "myproject",
+            "solana",
+            "mint",
+            "So11111111111111111111111111111111111111112"
+        );
+        assertTrue(asset.exists);
+        assertTrue(asset.authorized);
+        assertEq(asset.updatedBy, founder);
+    }
+
+    function test_authorizeExternalAsset_byApprover_forCuratedProject() public {
+        address approver = makeAddr("approver");
+        registry.addApprover(approver);
+
+        vm.prank(approver);
+        registry.authorizeExternalAsset(
+            "solproject",
+            "SOLANA",
+            "BAGS_CREATOR",
+            "bags-creator-wallet",
+            "ipfs://bags-creator"
+        );
+
+        IRegistry.ExternalAssetView memory asset = registry.getExternalAsset(
+            "solproject",
+            "SOLANA",
+            "BAGS_CREATOR",
+            "bags-creator-wallet"
+        );
+        assertTrue(asset.exists);
+        assertTrue(asset.authorized);
+        assertEq(asset.updatedBy, approver);
+    }
+
+    function test_authorizeExternalAsset_nonManager_reverts() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IRegistry.NotExternalAssetManager.selector, alice));
+        registry.authorizeExternalAsset(
+            "solproject",
+            "SOLANA",
+            "MINT",
+            "So11111111111111111111111111111111111111112",
+            "ipfs://mint-proof"
+        );
+    }
+
+    function test_authorizeExternalAsset_requiresMetadataURI() public {
+        _registerProject("myproject");
+
+        vm.prank(founder);
+        vm.expectRevert(IRegistry.MissingMetadataURI.selector);
+        registry.authorizeExternalAsset(
+            "myproject",
+            "SOLANA",
+            "MINT",
+            "So11111111111111111111111111111111111111112",
+            " "
+        );
+    }
+
+    function test_revokeExternalAsset() public {
+        _registerProject("myproject");
+
+        vm.prank(founder);
+        registry.authorizeExternalAsset(
+            "myproject",
+            "SOLANA",
+            "MINT",
+            "So11111111111111111111111111111111111111112",
+            "ipfs://mint-proof"
+        );
+
+        bytes32 assetKey = keccak256(
+            abi.encodePacked("tethics:asset:", "solana", ":", "mint", ":", "So11111111111111111111111111111111111111112")
+        );
+
+        vm.prank(founder);
+        vm.expectEmit(true, true, true, true);
+        emit ExternalAssetRevoked(
+            StringUtils.nameHash("myproject"),
+            assetKey,
+            "myproject",
+            "solana",
+            "mint",
+            "So11111111111111111111111111111111111111112",
+            founder,
+            "ipfs://revoked"
+        );
+        registry.revokeExternalAsset(
+            "myproject",
+            "SOLANA",
+            "MINT",
+            "So11111111111111111111111111111111111111112",
+            "ipfs://revoked"
+        );
+
+        IRegistry.ExternalAssetView memory asset = registry.getExternalAsset(
+            "myproject",
+            "SOLANA",
+            "MINT",
+            "So11111111111111111111111111111111111111112"
+        );
+        assertTrue(asset.exists);
+        assertFalse(asset.authorized);
+    }
+
     // ─── Shield Linking Tests ─────────────────────────────────────────────────
 
     function test_linkShield_onlyFactory() public {
@@ -437,6 +908,14 @@ contract RegistryTest is Test {
         vm.prank(factory);
         vm.expectRevert(IRegistry.ShieldAlreadyLinked.selector);
         registry.linkShield("myproject", shield2);
+    }
+
+    function test_linkShield_zeroAddress_reverts() public {
+        _registerProject("myproject");
+
+        vm.prank(factory);
+        vm.expectRevert(IRegistry.InvalidShieldContract.selector);
+        registry.linkShield("myproject", address(0));
     }
 
     // ─── isAuthorized edge cases ──────────────────────────────────────────────

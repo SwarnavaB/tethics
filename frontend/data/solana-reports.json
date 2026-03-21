@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "reports": [
+    {
+      "id": "report:So11111111111111111111111111111111111111112:tethics",
+      "slugHint": "tethics",
+      "ecosystem": "SOLANA",
+      "chain": "solana",
+      "venue": "BAGS",
+      "assetAddress": "So11111111111111111111111111111111111111112",
+      "creatorWallet": "11111111111111111111111111111111",
+      "detectedAt": "2026-03-21T00:00:00.000Z",
+      "detectedBy": {
+        "id": "bags-adapter",
+        "source": "SYSTEM"
+      },
+      "confidence": 90,
+      "severity": "HIGH",
+      "status": "AUTHORIZED",
+      "evidence": [
+        {
+          "id": "tethics:0:name_match",
+          "type": "NAME_MATCH",
+          "summary": "Token name matches protected project slug",
+          "weight": 25,
+          "source": {
+            "kind": "VENUE_API",
+            "label": "Bags API",
+            "url": "https://docs.bags.fm/api-reference",
+            "chain": "solana"
+          }
+        },
+        {
+          "id": "tethics:1:symbol_match",
+          "type": "SYMBOL_MATCH",
+          "summary": "Token symbol matches protected project slug",
+          "weight": 20,
+          "source": {
+            "kind": "VENUE_API",
+            "label": "Bags API",
+            "url": "https://docs.bags.fm/api-reference",
+            "chain": "solana"
+          }
+        },
+        {
+          "id": "tethics:2:creator_wallet_match",
+          "type": "VENUE_CREATOR_MATCH",
+          "summary": "Bags creator wallet matches an approved launch wallet",
+          "weight": 45,
+          "source": {
+            "kind": "VENUE_API",
+            "label": "Bags API",
+            "url": "https://docs.bags.fm/api-reference",
+            "chain": "solana"
+          }
+        }
+      ]
+    }
+  ]
+}

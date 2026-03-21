@@ -32,6 +32,9 @@ contract Registry is IRegistry {
     /// @notice Addresses authorised to approve or reject pending registrations
     mapping(address => bool) public isApprover;
 
+    /// @notice Addresses authorised to curate the charity catalog
+    mapping(address => bool) public isCharityManager;
+
     // ─── Project Storage ──────────────────────────────────────────────────────
 
     struct Project {
@@ -51,6 +54,56 @@ contract Registry is IRegistry {
         bool exists;
     }
 
+    struct ExternalClaim {
+        bytes32 nameHash;
+        string name;
+        string ecosystem;
+        address proposer;
+        bytes32 payloadHash;
+        string metadataURI;
+        uint256 submittedAt;
+        bool exists;
+        bool reviewed;
+        bool approved;
+        address reviewer;
+        uint256 reviewedAt;
+        bytes32 resolutionHash;
+        string resolutionURI;
+        string reviewNotes;
+    }
+
+    struct ExternalAsset {
+        bytes32 nameHash;
+        string name;
+        string ecosystem;
+        string assetType;
+        string assetId;
+        string metadataURI;
+        bool authorized;
+        address updatedBy;
+        uint256 updatedAt;
+        bool exists;
+    }
+
+    struct ExternalAssetInput {
+        bytes32 nameHash;
+        bytes32 assetKey;
+        string name;
+        string ecosystem;
+        string assetType;
+        string assetId;
+    }
+
+    struct CharityOption {
+        string name;
+        address payoutAddress;
+        string metadataURI;
+        bool active;
+        uint256 createdAt;
+        uint256 updatedAt;
+        bool exists;
+    }
+
     /// @dev projectName hash => active Project
     mapping(bytes32 => Project) private _projects;
 
@@ -62,6 +115,24 @@ contract Registry is IRegistry {
 
     /// @dev reporter address => number of successful reports
     mapping(address => uint256) public reporterScore;
+
+    /// @dev projectName hash => tokenContract => reporter => already reported
+    mapping(bytes32 => mapping(address => mapping(address => bool))) private _unauthorizedReports;
+
+    /// @dev incremental id for externally anchored claims
+    uint256 public externalClaimCount;
+
+    /// @dev claim id => anchored external claim
+    mapping(uint256 => ExternalClaim) private _externalClaims;
+
+    /// @dev project name hash => external asset key => external asset record
+    mapping(bytes32 => mapping(bytes32 => ExternalAsset)) private _externalAssets;
+
+    /// @dev incremental id for approved charity options
+    uint256 public charityOptionCount;
+
+    /// @dev charity id => approved charity option
+    mapping(uint256 => CharityOption) private _charityOptions;
 
     // ─── Constructor ─────────────────────────────────────────────────────────
 
@@ -76,6 +147,7 @@ contract Registry is IRegistry {
     /// @inheritdoc IRegistry
     function transferOwnership(address newOwner) external override {
         if (msg.sender != owner) revert NotOwner();
+        if (newOwner == address(0)) revert ZeroOwner();
         emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
     }
@@ -83,6 +155,7 @@ contract Registry is IRegistry {
     /// @inheritdoc IRegistry
     function addApprover(address approver) external override {
         if (msg.sender != owner) revert NotOwner();
+        if (approver == address(0)) revert InvalidApproverAddress();
         isApprover[approver] = true;
         emit ApproverAdded(approver);
     }
@@ -90,8 +163,49 @@ contract Registry is IRegistry {
     /// @inheritdoc IRegistry
     function removeApprover(address approver) external override {
         if (msg.sender != owner) revert NotOwner();
+        if (approver == address(0)) revert InvalidApproverAddress();
         isApprover[approver] = false;
         emit ApproverRemoved(approver);
+    }
+
+    /// @inheritdoc IRegistry
+    function addCharityManager(address manager) external override {
+        if (msg.sender != owner) revert NotOwner();
+        if (manager == address(0)) revert InvalidCharityManagerAddress();
+        isCharityManager[manager] = true;
+        emit CharityManagerAdded(manager);
+    }
+
+    /// @inheritdoc IRegistry
+    function removeCharityManager(address manager) external override {
+        if (msg.sender != owner) revert NotOwner();
+        if (manager == address(0)) revert InvalidCharityManagerAddress();
+        isCharityManager[manager] = false;
+        emit CharityManagerRemoved(manager);
+    }
+
+    /// @inheritdoc IRegistry
+    function addCharityOption(
+        string calldata name,
+        address payoutAddress,
+        string calldata metadataURI
+    ) external override returns (uint256 charityId) {
+        if (!_canManageCharityCatalog(msg.sender)) revert NotOwner();
+        charityId = ++charityOptionCount;
+        _setCharityOption(charityId, name, payoutAddress, metadataURI, true, true);
+    }
+
+    /// @inheritdoc IRegistry
+    function updateCharityOption(
+        uint256 charityId,
+        string calldata name,
+        address payoutAddress,
+        string calldata metadataURI,
+        bool active
+    ) external override {
+        if (!_canManageCharityCatalog(msg.sender)) revert NotOwner();
+        if (!_charityOptions[charityId].exists) revert NoCharityOption(charityId);
+        _setCharityOption(charityId, name, payoutAddress, metadataURI, active, false);
     }
 
     // ─── Registration ─────────────────────────────────────────────────────────
@@ -166,6 +280,7 @@ contract Registry is IRegistry {
     /// @inheritdoc IRegistry
     function linkShield(string calldata name, address shieldContract) external override {
         if (msg.sender != shieldFactory) revert OnlyShieldFactory();
+        if (shieldContract == address(0)) revert InvalidShieldContract();
 
         bytes32 key = StringUtils.nameHash(name);
         Project storage project = _projects[key];
@@ -181,6 +296,7 @@ contract Registry is IRegistry {
 
     /// @inheritdoc IRegistry
     function authorizeToken(string calldata name, address tokenContract) external override {
+        if (tokenContract == address(0)) revert InvalidTokenContract();
         bytes32 key = StringUtils.nameHash(name);
         Project storage project = _projects[key];
         if (!project.exists) revert ProjectNotFound(key);
@@ -194,6 +310,7 @@ contract Registry is IRegistry {
 
     /// @inheritdoc IRegistry
     function revokeToken(string calldata name, address tokenContract) external override {
+        if (tokenContract == address(0)) revert InvalidTokenContract();
         bytes32 key = StringUtils.nameHash(name);
         Project storage project = _projects[key];
         if (!project.exists) revert ProjectNotFound(key);
@@ -209,6 +326,7 @@ contract Registry is IRegistry {
 
     /// @inheritdoc IRegistry
     function addAddress(string calldata name, address additionalAddress) external override {
+        if (additionalAddress == address(0)) revert InvalidAdditionalAddress();
         bytes32 key = StringUtils.nameHash(name);
         Project storage project = _projects[key];
         if (!project.exists) revert ProjectNotFound(key);
@@ -223,10 +341,16 @@ contract Registry is IRegistry {
 
     /// @inheritdoc IRegistry
     function reportUnauthorizedToken(string calldata name, address tokenContract) external override {
+        if (tokenContract == address(0)) revert InvalidTokenContract();
         bytes32 key = StringUtils.nameHash(name);
         Project storage project = _projects[key];
         if (!project.exists) revert ProjectNotFound(key);
         if (_authorizedTokens[key][tokenContract]) revert TokenIsAuthorized(tokenContract);
+        if (_unauthorizedReports[key][tokenContract][msg.sender]) {
+            revert DuplicateUnauthorizedReport(msg.sender, tokenContract);
+        }
+
+        _unauthorizedReports[key][tokenContract][msg.sender] = true;
 
         // Increment reporter score
         reporterScore[msg.sender]++;
@@ -269,20 +393,153 @@ contract Registry is IRegistry {
 
         emit DisputeRaised(key, msg.sender, reason);
 
-        // Simple dispute resolution: if challenger provides MORE proofs than original,
-        // transfer registration. In practice, disputes require human governance or
-        // a more sophisticated onchain mechanism.
-        // For v1: emit event and allow off-chain resolution. The challenge window serves
-        // as a deterrent against squatting.
-        if (newProofHashes.length > project.verificationProofs.length) {
-            address oldFounder = project.founder;
-            project.founder = msg.sender;
-            project.verificationProofs = newProofHashes;
-            project.challengeDeadline = block.timestamp; // Close window after takeover
+        // Disputes are intentionally review-first. The challenge window exists to force
+        // public evidence into the open, not to auto-transfer founder rights on a naive
+        // proof-count comparison. Human review must resolve the dispute offchain or in a
+        // future governance flow.
+        (newProofHashes);
+    }
 
-            emit DisputeResolved(key, msg.sender);
-            (oldFounder); // silence unused warning
-        }
+    /// @inheritdoc IRegistry
+    function submitExternalClaim(
+        string calldata name,
+        string calldata ecosystem,
+        bytes32 payloadHash,
+        string calldata metadataURI
+    ) external override returns (uint256 claimId) {
+        if (!StringUtils.isValidName(name)) revert InvalidProjectName();
+        if (bytes(ecosystem).length == 0) revert InvalidEcosystem();
+        if (payloadHash == bytes32(0)) revert EmptyPayloadHash();
+        if (bytes(_trim(metadataURI)).length == 0) revert MissingMetadataURI();
+
+        string memory normalized = StringUtils.normalize(name);
+        bytes32 key = StringUtils.nameHash(name);
+
+        claimId = ++externalClaimCount;
+        ExternalClaim storage claim = _externalClaims[claimId];
+        claim.nameHash = key;
+        claim.name = normalized;
+        claim.ecosystem = ecosystem;
+        claim.proposer = msg.sender;
+        claim.payloadHash = payloadHash;
+        claim.metadataURI = _trim(metadataURI);
+        claim.submittedAt = block.timestamp;
+        claim.exists = true;
+
+        emit ExternalClaimSubmitted(
+            claimId,
+            key,
+            normalized,
+            ecosystem,
+            msg.sender,
+            payloadHash,
+            metadataURI
+        );
+    }
+
+    /// @inheritdoc IRegistry
+    function reviewExternalClaim(
+        uint256 claimId,
+        bool approved,
+        string calldata reviewNotes,
+        bytes32 resolutionHash,
+        string calldata resolutionURI
+    ) external override {
+        if (msg.sender != owner && !isApprover[msg.sender]) revert NotApprover();
+        if (resolutionHash == bytes32(0)) revert MissingResolutionHash();
+        if (bytes(_trim(resolutionURI)).length == 0) revert MissingResolutionURI();
+
+        ExternalClaim storage claim = _externalClaims[claimId];
+        if (!claim.exists) revert NoExternalClaim(claimId);
+        if (claim.reviewed) revert ExternalClaimAlreadyReviewed(claimId);
+
+        claim.reviewed = true;
+        claim.approved = approved;
+        claim.reviewer = msg.sender;
+        claim.reviewedAt = block.timestamp;
+        claim.resolutionHash = resolutionHash;
+        claim.resolutionURI = _trim(resolutionURI);
+        claim.reviewNotes = reviewNotes;
+
+        emit ExternalClaimReviewed(
+            claimId,
+            claim.nameHash,
+            claim.name,
+            claim.ecosystem,
+            msg.sender,
+            approved,
+            resolutionHash,
+            resolutionURI,
+            reviewNotes
+        );
+    }
+
+    /// @inheritdoc IRegistry
+    function authorizeExternalAsset(
+        string calldata name,
+        string calldata ecosystem,
+        string calldata assetType,
+        string calldata assetId,
+        string calldata metadataURI
+    ) external override {
+        ExternalAssetInput memory input = _normalizeExternalAsset(name, ecosystem, assetType, assetId);
+        if (!_canManageExternalAssets(input.nameHash, msg.sender)) revert NotExternalAssetManager(msg.sender);
+        if (bytes(_trim(metadataURI)).length == 0) revert MissingMetadataURI();
+
+        ExternalAsset storage asset = _externalAssets[input.nameHash][input.assetKey];
+        asset.nameHash = input.nameHash;
+        asset.name = input.name;
+        asset.ecosystem = input.ecosystem;
+        asset.assetType = input.assetType;
+        asset.assetId = input.assetId;
+        asset.metadataURI = _trim(metadataURI);
+        asset.authorized = true;
+        asset.updatedBy = msg.sender;
+        asset.updatedAt = block.timestamp;
+        asset.exists = true;
+
+        emit ExternalAssetAuthorized(
+            input.nameHash,
+            input.assetKey,
+            input.name,
+            input.ecosystem,
+            input.assetType,
+            input.assetId,
+            msg.sender,
+            metadataURI
+        );
+    }
+
+    /// @inheritdoc IRegistry
+    function revokeExternalAsset(
+        string calldata name,
+        string calldata ecosystem,
+        string calldata assetType,
+        string calldata assetId,
+        string calldata metadataURI
+    ) external override {
+        ExternalAssetInput memory input = _normalizeExternalAsset(name, ecosystem, assetType, assetId);
+        if (!_canManageExternalAssets(input.nameHash, msg.sender)) revert NotExternalAssetManager(msg.sender);
+        if (bytes(_trim(metadataURI)).length == 0) revert MissingMetadataURI();
+
+        ExternalAsset storage asset = _externalAssets[input.nameHash][input.assetKey];
+        if (!asset.exists) revert NoExternalAsset(input.assetKey);
+
+        asset.metadataURI = _trim(metadataURI);
+        asset.authorized = false;
+        asset.updatedBy = msg.sender;
+        asset.updatedAt = block.timestamp;
+
+        emit ExternalAssetRevoked(
+            input.nameHash,
+            input.assetKey,
+            input.name,
+            input.ecosystem,
+            input.assetType,
+            input.assetId,
+            msg.sender,
+            metadataURI
+        );
     }
 
     // ─── View Functions ────────────────────────────────────────────────────────
@@ -352,6 +609,78 @@ contract Registry is IRegistry {
         return _pendingProjects[StringUtils.nameHash(name)].exists;
     }
 
+    /// @inheritdoc IRegistry
+    function getExternalClaim(uint256 claimId)
+        external
+        view
+        override
+        returns (ExternalClaimView memory)
+    {
+        ExternalClaim storage claim = _externalClaims[claimId];
+        return ExternalClaimView({
+            claimId: claimId,
+            nameHash: claim.nameHash,
+            name: claim.name,
+            ecosystem: claim.ecosystem,
+            proposer: claim.proposer,
+            payloadHash: claim.payloadHash,
+            metadataURI: claim.metadataURI,
+            submittedAt: claim.submittedAt,
+            exists: claim.exists,
+            reviewed: claim.reviewed,
+            approved: claim.approved,
+            reviewer: claim.reviewer,
+            reviewedAt: claim.reviewedAt,
+            resolutionHash: claim.resolutionHash,
+            resolutionURI: claim.resolutionURI,
+            reviewNotes: claim.reviewNotes
+        });
+    }
+
+    /// @inheritdoc IRegistry
+    function getExternalAsset(
+        string calldata name,
+        string calldata ecosystem,
+        string calldata assetType,
+        string calldata assetId
+    ) external view override returns (ExternalAssetView memory) {
+        bytes32 key = StringUtils.nameHash(name);
+        bytes32 assetKey = _externalAssetKey(
+            StringUtils.normalize(ecosystem),
+            StringUtils.normalize(assetType),
+            _trim(assetId)
+        );
+
+        ExternalAsset storage asset = _externalAssets[key][assetKey];
+        return ExternalAssetView({
+            nameHash: asset.nameHash,
+            name: asset.name,
+            ecosystem: asset.ecosystem,
+            assetType: asset.assetType,
+            assetId: asset.assetId,
+            metadataURI: asset.metadataURI,
+            authorized: asset.authorized,
+            updatedBy: asset.updatedBy,
+            updatedAt: asset.updatedAt,
+            exists: asset.exists
+        });
+    }
+
+    /// @inheritdoc IRegistry
+    function getCharityOption(uint256 charityId) external view override returns (CharityOptionView memory) {
+        CharityOption storage option = _charityOptions[charityId];
+        return CharityOptionView({
+            charityId: charityId,
+            name: option.name,
+            payoutAddress: option.payoutAddress,
+            metadataURI: option.metadataURI,
+            active: option.active,
+            createdAt: option.createdAt,
+            updatedAt: option.updatedAt,
+            exists: option.exists
+        });
+    }
+
     /// @notice Check if a token is authorized by raw name hash (gas-optimized for integrations)
     /// @param nameHash_ keccak256 of the normalized project name
     /// @param tokenContract Token contract address
@@ -362,5 +691,105 @@ contract Registry is IRegistry {
         returns (bool)
     {
         return _projects[nameHash_].exists && _authorizedTokens[nameHash_][tokenContract];
+    }
+
+    function _canManageExternalAssets(bytes32 nameHash_, address caller) internal view returns (bool) {
+        if (caller == owner || isApprover[caller]) return true;
+        Project storage project = _projects[nameHash_];
+        return project.exists && project.founder == caller;
+    }
+
+    function _externalAssetKey(
+        string memory ecosystem,
+        string memory assetType,
+        string memory assetId
+    ) internal pure returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                "tethics:asset:",
+                ecosystem,
+                ":",
+                assetType,
+                ":",
+                assetId
+            )
+        );
+    }
+
+    function _normalizeExternalAsset(
+        string calldata name,
+        string calldata ecosystem,
+        string calldata assetType,
+        string calldata assetId
+    ) internal pure returns (ExternalAssetInput memory input) {
+        input.nameHash = StringUtils.nameHash(name);
+        input.name = StringUtils.normalize(name);
+        input.ecosystem = StringUtils.normalize(ecosystem);
+        input.assetType = StringUtils.normalize(assetType);
+        input.assetId = _trim(assetId);
+
+        if (bytes(input.ecosystem).length == 0) revert InvalidEcosystem();
+        if (bytes(input.assetType).length == 0) revert InvalidAssetType();
+        if (bytes(input.assetId).length == 0) revert InvalidAssetId();
+
+        input.assetKey = _externalAssetKey(input.ecosystem, input.assetType, input.assetId);
+    }
+
+    function _trim(string memory input) internal pure returns (string memory trimmed) {
+        bytes memory b = bytes(input);
+        uint256 start = 0;
+        uint256 end = b.length;
+
+        while (start < end && b[start] == 0x20) {
+            start++;
+        }
+        while (end > start && b[end - 1] == 0x20) {
+            end--;
+        }
+
+        bytes memory result = new bytes(end - start);
+        for (uint256 i = start; i < end; i++) {
+            result[i - start] = b[i];
+        }
+        return string(result);
+    }
+
+    function _setCharityOption(
+        uint256 charityId,
+        string calldata name,
+        address payoutAddress,
+        string calldata metadataURI,
+        bool active,
+        bool isNew
+    ) internal {
+        string memory trimmedName = _trim(name);
+        string memory trimmedMetadataURI = _trim(metadataURI);
+        if (bytes(trimmedName).length == 0) revert InvalidCharityName();
+        if (payoutAddress == address(0)) revert InvalidCharityAddress();
+        if (bytes(trimmedMetadataURI).length == 0) revert MissingMetadataURI();
+
+        CharityOption storage option = _charityOptions[charityId];
+        option.name = trimmedName;
+        option.payoutAddress = payoutAddress;
+        option.metadataURI = trimmedMetadataURI;
+        option.active = active;
+        option.updatedAt = block.timestamp;
+        if (isNew) {
+            option.createdAt = block.timestamp;
+            option.exists = true;
+        }
+
+        emit CharityOptionConfigured(
+            charityId,
+            trimmedName,
+            payoutAddress,
+            trimmedMetadataURI,
+            active,
+            msg.sender
+        );
+    }
+
+    function _canManageCharityCatalog(address caller) internal view returns (bool) {
+        return caller == owner || isCharityManager[caller];
     }
 }

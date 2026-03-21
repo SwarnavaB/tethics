@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {Shield} from "../src/Shield.sol";
 import {IShield} from "../src/interfaces/IShield.sol";
+import {ISwapRouter} from "../src/interfaces/ISwapRouter.sol";
 
 /// @title ShieldTest
 /// @notice Unit tests for Shield.sol
@@ -27,8 +28,9 @@ contract ShieldTest is Test {
     event UnauthorizedTokenDetected(string indexed projectName, address indexed tokenContract, address indexed reporter);
 
     function setUp() public {
-        swapRouter = new RevertingSwapRouter();
         weth = new MockWETH();
+        swapRouter = new RevertingSwapRouter(weth);
+        deal(address(swapRouter), 100 ether);
         shield = new Shield("myproject", charity, registry, founder, address(swapRouter), address(weth));
         token = new MockERC20("BadToken", "BAD");
     }
@@ -79,7 +81,7 @@ contract ShieldTest is Test {
 
     function test_drainToken_noFunds_reverts() public {
         vm.expectRevert(IShield.NoFundsToRoute.selector);
-        shield.drainToken(address(token));
+        shield.drainToken(address(token), 1);
     }
 
     function test_drainToken_swapFails_holdsAndEmitsEvent() public {
@@ -89,7 +91,7 @@ contract ShieldTest is Test {
 
         vm.expectEmit(true, false, false, false);
         emit FundsHeldPendingRetry(address(token), 1000e18, "");
-        shield.drainToken(address(token));
+        shield.drainToken(address(token), 1);
 
         // Tokens still held - approval revoked
         assertEq(token.balanceOf(address(shield)), 1000e18);
@@ -102,8 +104,26 @@ contract ShieldTest is Test {
 
         // Expect FundsRoutedToCharity to be emitted (swap succeeded path)
         vm.expectEmit(true, false, false, false);
-        emit FundsRoutedToCharity(address(token), 1000e18, charity);
-        shield.drainToken(address(token));
+        emit FundsRoutedToCharity(address(token), 1, charity);
+        shield.drainToken(address(token), 1);
+    }
+
+    function test_drainToken_zeroMinAmountOut_reverts() public {
+        token.mint(address(shield), 1000e18);
+
+        vm.expectRevert(IShield.InvalidMinimumAmountOut.selector);
+        shield.drainToken(address(token), 0);
+    }
+
+    function test_drainToken_minAmountOutTooHigh_holdsFunds() public {
+        swapRouter.setShouldRevert(false);
+        token.mint(address(shield), 1000e18);
+
+        vm.expectEmit(true, false, false, false);
+        emit FundsHeldPendingRetry(address(token), 1000e18, "");
+        shield.drainToken(address(token), 2);
+
+        assertEq(token.balanceOf(address(shield)), 1000e18);
     }
 
     // ─── Buyer Notification ───────────────────────────────────────────────────
@@ -169,23 +189,42 @@ contract ShieldTest is Test {
 /// Uses a fallback to match any call signature (including the struct variant Shield sends).
 contract RevertingSwapRouter {
     bool public shouldRevert;
+    MockWETH public immutable weth;
+
+    constructor(MockWETH _weth) {
+        weth = _weth;
+    }
 
     function setShouldRevert(bool _revert) external {
         shouldRevert = _revert;
     }
 
-    fallback() external {
+    function exactInputSingle(ISwapRouter.ExactInputSingleParams calldata params)
+        external
+        returns (uint256 amountOut)
+    {
         if (shouldRevert) revert("swap failed: no liquidity");
-        // Return ABI-encoded uint256(1) to signal 1 token out
-        bytes memory ret = abi.encode(uint256(1));
-        assembly {
-            return(add(ret, 32), 32)
-        }
+        MockERC20(params.tokenIn).transferFrom(msg.sender, address(this), params.amountIn);
+        amountOut = 1;
+        if (amountOut < params.amountOutMinimum) revert("insufficient output");
+        weth.mint{value: amountOut}(params.recipient, amountOut);
     }
 }
 
 contract MockWETH {
     mapping(address => uint256) public balanceOf;
+
+    function mint(address to, uint256 amount) external payable {
+        require(msg.value == amount, "mint backing mismatch");
+        balanceOf[to] += amount;
+    }
+
+    function withdraw(uint256 amount) external {
+        balanceOf[msg.sender] -= amount;
+        (bool ok,) = payable(msg.sender).call{value: amount}("");
+        require(ok, "withdraw failed");
+    }
+
     receive() external payable {}
 }
 

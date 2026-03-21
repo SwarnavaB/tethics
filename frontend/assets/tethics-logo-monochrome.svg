@@ -1,0 +1,22 @@
+<svg width="920" height="240" viewBox="0 0 920 240" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">TETHICS monochrome logo</title>
+  <desc id="desc">Monochrome TETHICS logo for print and neutral surfaces.</desc>
+  <path d="M128 28L197 54.5V115.5C197 166.955 167.443 212.023 128 230C88.5566 212.023 59 166.955 59 115.5V54.5L128 28Z" fill="#142227"/>
+  <path d="M128 41L186.5 63.5V115.154C186.5 159.248 161.312 199.303 128 215.897C94.6878 199.303 69.5 159.248 69.5 115.154V63.5L128 41Z" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="5"/>
+  <path d="M98 76C98 70.4772 102.477 66 108 66H148C153.523 66 158 70.4772 158 76V82H171C176.523 82 181 86.4772 181 92V103C181 108.523 176.523 113 171 113H158V176C158 181.523 153.523 186 148 186H108C102.477 186 98 181.523 98 176V113H85C79.4772 113 75 108.523 75 103V92C75 86.4772 79.4772 82 85 82H98V76Z" fill="#FFFFFF"/>
+  <g fill="#142227">
+    <circle cx="91" cy="129" r="9"/>
+    <circle cx="165" cy="129" r="9"/>
+    <circle cx="128" cy="194" r="9"/>
+    <path d="M91 129H114" stroke="#142227" stroke-width="6" stroke-linecap="round"/>
+    <path d="M142 129H165" stroke="#142227" stroke-width="6" stroke-linecap="round"/>
+    <path d="M128 155V194" stroke="#142227" stroke-width="6" stroke-linecap="round"/>
+  </g>
+  <g fill="#142227">
+    <path d="M300.696 74.248H450.744V104.92H393.288V198H358.152V104.92H300.696V74.248Z"/>
+    <path d="M474.357 74.248H611.253V103.864H509.493V123.64H603.621V151.48H509.493V168.384H613.989V198H474.357V74.248Z"/>
+    <path d="M637.553 74.248H672.689V121.432H731.201V74.248H766.337V198H731.201V151.832H672.689V198H637.553V74.248Z"/>
+    <path d="M790.326 74.248H940.374V104.92H882.918V198H847.782V104.92H790.326V74.248Z"/>
+    <path d="M300.696 28H432.96V52.64H300.696V28Z"/>
+  </g>
+</svg>

@@ -29,19 +29,24 @@ interface IShield {
     /// @notice Emitted when buyers are notified of an unauthorized token
     event BuyersNotified(address indexed unauthorizedToken, uint256 holderCount, address indexed caller);
 
+    /// @notice Emitted once per holder notification for wallets and indexers
+    event HolderNotified(address indexed holder, address indexed unauthorizedToken, string message);
+
     // ─── Errors ───────────────────────────────────────────────────────────────
 
     error ZeroCharityAddress();
     error NotRegistry();
     error RateLimitExceeded(address holder, address tokenContract);
     error NoFundsToRoute();
+    error InvalidMinimumAmountOut();
     error SwapFailed(address tokenContract);
 
     // ─── Core Functions ────────────────────────────────────────────────────────
 
     /// @notice Drain any ERC20 token held in this contract to charity via DEX swap
     /// @param tokenContract Address of the ERC20 token to drain
-    function drainToken(address tokenContract) external;
+    /// @param minAmountOut Minimum acceptable wrapped-native output for the swap
+    function drainToken(address tokenContract, uint256 minAmountOut) external;
 
     /// @notice Drain native ETH held in this contract to charity
     function drainETH() external;

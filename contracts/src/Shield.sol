@@ -48,6 +48,9 @@ contract Shield is IShield {
     /// @dev holder → tokenContract → total notification count
     mapping(address => mapping(address => uint256)) private _notificationCount;
 
+    /// @dev True while unwrapping WETH into native ETH for a drain flow
+    bool private _acceptingWrappedNative;
+
     // ─── Constructor ─────────────────────────────────────────────────────────
 
     /// @param _projectName_ Normalized project name this Shield protects
@@ -80,7 +83,14 @@ contract Shield is IShield {
     /// @notice Accept ETH - immediately forward to charity (no accumulation)
     receive() external payable {
         if (msg.value > 0) {
-            _sendETHToCharity(msg.value);
+            if (_acceptingWrappedNative) {
+                return;
+            }
+            if (_sendETHToCharity(msg.value)) {
+                emit FundsRoutedToCharity(address(0), msg.value, charityAddress);
+            } else {
+                emit FundsHeldPendingRetry(address(0), msg.value, "charity transfer failed");
+            }
         }
     }
 
@@ -88,18 +98,23 @@ contract Shield is IShield {
 
     /// @inheritdoc IShield
     /// @notice Anyone can trigger a drain - permissionless charity routing
-    function drainToken(address tokenContract) external override {
+    function drainToken(address tokenContract, uint256 minAmountOut) external override {
+        if (minAmountOut == 0) revert InvalidMinimumAmountOut();
         uint256 balance = IERC20(tokenContract).balanceOf(address(this));
         if (balance == 0) revert NoFundsToRoute();
 
-        bool swapped = _swapTokenToETH(tokenContract, balance);
+        (bool swapped, uint256 ethAmount) = _swapTokenToETH(tokenContract, balance, minAmountOut);
 
         if (swapped) {
-            uint256 ethBalance = address(this).balance;
-            if (ethBalance > 0) {
-                _sendETHToCharity(ethBalance);
+            if (_sendETHToCharity(ethAmount)) {
+                emit FundsRoutedToCharity(tokenContract, ethAmount, charityAddress);
+            } else {
+                emit FundsHeldPendingRetry(
+                    tokenContract,
+                    ethAmount,
+                    "charity transfer failed"
+                );
             }
-            emit FundsRoutedToCharity(tokenContract, balance, charityAddress);
         } else {
             // Swap failed (no liquidity) - hold until retry
             emit FundsHeldPendingRetry(
@@ -114,8 +129,11 @@ contract Shield is IShield {
     function drainETH() external override {
         uint256 balance = address(this).balance;
         if (balance == 0) revert NoFundsToRoute();
-        _sendETHToCharity(balance);
-        emit FundsRoutedToCharity(address(0), balance, charityAddress);
+        if (_sendETHToCharity(balance)) {
+            emit FundsRoutedToCharity(address(0), balance, charityAddress);
+        } else {
+            emit FundsHeldPendingRetry(address(0), balance, "charity transfer failed");
+        }
     }
 
     // ─── Buyer Notification ───────────────────────────────────────────────────
@@ -156,22 +174,7 @@ contract Shield is IShield {
             // This is a standard ERC20 transfer(to, 0) with no state change on the token
             // We emit our own event instead to avoid calling arbitrary token contracts
             notified++;
-
-            emit BuyersNotified(unauthorizedToken, 1, msg.sender);
-
-            // Emit per-holder notification via low-level event
-            // The message bytes are indexed for off-chain wallets to parse
-            assembly {
-                // keccak256("HolderNotified(address,address,string)")
-                let sig := 0x9c2fbf4d2f66a3f20adb1c2b64d476a7b9a06a4785d10d9b1e8c7f5e3a8f1b2
-                log3(
-                    add(message, 32),
-                    mload(message),
-                    sig,
-                    holder,
-                    unauthorizedToken
-                )
-            }
+            emit HolderNotified(holder, unauthorizedToken, message);
         }
 
         emit BuyersNotified(unauthorizedToken, notified, msg.sender);
@@ -210,11 +213,22 @@ contract Shield is IShield {
     /// @notice Swap ERC20 token to ETH via DEX router
     /// @param tokenContract Token to swap
     /// @param amount Amount to swap
+    /// @param minAmountOut Minimum acceptable wrapped-native output
     /// @return success True if swap succeeded
-    function _swapTokenToETH(address tokenContract, uint256 amount)
+    function _swapTokenToETH(address tokenContract, uint256 amount, uint256 minAmountOut)
         internal
-        returns (bool success)
+        returns (bool success, uint256 amountOut)
     {
+        if (tokenContract == weth) {
+            if (amount < minAmountOut) {
+                return (false, 0);
+            }
+            _acceptingWrappedNative = true;
+            IWETH(weth).withdraw(amount);
+            _acceptingWrappedNative = false;
+            return (true, amount);
+        }
+
         // Approve router
         IERC20(tokenContract).approve(swapRouter, amount);
 
@@ -229,7 +243,7 @@ contract Shield is IShield {
                 recipient: address(this),
                 deadline: block.timestamp,
                 amountIn: amount,
-                amountOutMinimum: 0,
+                amountOutMinimum: minAmountOut,
                 sqrtPriceLimitX96: 0
             }))
         );
@@ -237,23 +251,25 @@ contract Shield is IShield {
         (bool ok, bytes memory returnData) = swapRouter.call(callData);
 
         if (ok && returnData.length >= 32) {
-            return true;
+            amountOut = abi.decode(returnData, (uint256));
+            if (amountOut > 0) {
+                _acceptingWrappedNative = true;
+                IWETH(weth).withdraw(amountOut);
+                _acceptingWrappedNative = false;
+                return (true, amountOut);
+            }
         }
 
         // Revoke approval on failure to prevent stuck approvals
         IERC20(tokenContract).approve(swapRouter, 0);
-        return false;
+        return (false, 0);
     }
 
     /// @notice Send ETH to charity address
     /// @param amount Amount in wei
-    function _sendETHToCharity(uint256 amount) internal {
-        (bool ok,) = charityAddress.call{value: amount}("");
-        // If charity address is a contract that reverts, hold the ETH
-        // This prevents griefing by setting a bad charity
-        if (ok) {
-            emit FundsRoutedToCharity(address(0), amount, charityAddress);
-        }
+    function _sendETHToCharity(uint256 amount) internal returns (bool ok) {
+        (bool success,) = charityAddress.call{value: amount}("");
+        return success;
     }
 
     /// @notice Convert address to hex string for notification messages
@@ -281,4 +297,8 @@ interface IERC20 {
     function balanceOf(address account) external view returns (uint256);
     function approve(address spender, uint256 amount) external returns (bool);
     function transfer(address to, uint256 amount) external returns (bool);
+}
+
+interface IWETH {
+    function withdraw(uint256 amount) external;
 }

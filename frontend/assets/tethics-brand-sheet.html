@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TETHICS Brand Sheet</title>
+  <style>
+    :root {
+      --ink: #142227;
+      --muted: #5d6f78;
+      --paper: #fcfbf8;
+      --panel: #ffffff;
+      --line: rgba(20, 34, 39, 0.12);
+      --teal: #0f6c75;
+      --sand: #e9dcc6;
+      --gold: #efc07b;
+      --dark: #12333c;
+      --radius: 22px;
+      --font: Inter, system-ui, sans-serif;
+      --display: "IBM Plex Sans", Inter, system-ui, sans-serif;
+      --mono: "JetBrains Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 40px;
+      background:
+        radial-gradient(circle at top right, rgba(15,108,117,0.1), transparent 24%),
+        linear-gradient(180deg, #fcfbf8 0%, #f2ece3 100%);
+      color: var(--ink);
+      font-family: var(--font);
+    }
+    .sheet {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      gap: 24px;
+    }
+    .hero, .panel {
+      background: rgba(255,255,255,0.82);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 28px;
+      box-shadow: 0 20px 44px rgba(20,34,39,0.06);
+    }
+    .hero img { width: min(720px, 100%); height: auto; display: block; }
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      font-size: 12px;
+      font-weight: 800;
+      color: #9f651b;
+      margin: 0 0 12px;
+    }
+    h1, h2, h3 {
+      margin: 0;
+      font-family: var(--display);
+      letter-spacing: -0.03em;
+    }
+    h1 { font-size: 54px; margin-top: 10px; }
+    h2 { font-size: 26px; margin-bottom: 12px; }
+    h3 { font-size: 18px; }
+    p { color: var(--muted); line-height: 1.6; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 24px;
+    }
+    .asset-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+    .asset {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+      background: rgba(252,251,248,0.85);
+    }
+    .asset-preview {
+      min-height: 172px;
+      border-radius: 16px;
+      border: 1px dashed rgba(20,34,39,0.16);
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+    .asset-preview.dark { background: #102229; }
+    .asset-preview img {
+      max-width: 100%;
+      max-height: 132px;
+      height: auto;
+      display: block;
+    }
+    .swatches {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .swatch {
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+    .swatch-color { height: 108px; }
+    .swatch-meta { padding: 14px; }
+    .swatch-meta code { font-family: var(--mono); }
+    ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      display: grid;
+      gap: 8px;
+    }
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+    .meta div {
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+      color: var(--muted);
+    }
+    @media print {
+      body { padding: 0; background: white; }
+      .hero, .panel { box-shadow: none; }
+    }
+    @media (max-width: 900px) {
+      .grid, .asset-grid, .swatches, .meta { grid-template-columns: 1fr; }
+      body { padding: 18px; }
+      h1 { font-size: 38px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <section class="hero">
+      <p class="eyebrow">TETHICS Press Kit</p>
+      <img src="tethics-logo-horizontal.svg" alt="TETHICS" />
+      <h1>Brand sheet for a cross-chain legitimacy and governance protocol.</h1>
+      <p>TETHICS protects founders and the public from fake launches across Base and Solana. The visual system is institutional rather than speculative: shield forms, network links, restrained color, and explicit governance framing.</p>
+      <div class="meta">
+        <div><strong>Primary lockup</strong><br />Use the horizontal logo in product headers, documentation, and governance surfaces.</div>
+        <div><strong>Compact mark</strong><br />Use the shield mark for favicons, app icons, square avatars, and wallet surfaces.</div>
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="panel">
+        <p class="eyebrow">Logo System</p>
+        <h2>Core assets</h2>
+        <div class="asset-grid">
+          <div class="asset">
+            <div class="asset-preview"><img src="tethics-logo-horizontal.svg" alt="TETHICS horizontal logo" /></div>
+            <h3>Horizontal</h3>
+            <p>Default product and website lockup.</p>
+          </div>
+          <div class="asset">
+            <div class="asset-preview"><img src="tethics-logo-mark.svg" alt="TETHICS mark" style="max-height: 124px" /></div>
+            <h3>Mark</h3>
+            <p>Use when horizontal space is constrained.</p>
+          </div>
+          <div class="asset">
+            <div class="asset-preview dark"><img src="tethics-logo-dark.svg" alt="TETHICS dark logo" /></div>
+            <h3>Dark Variant</h3>
+            <p>Use on dark governance or social backgrounds.</p>
+          </div>
+          <div class="asset">
+            <div class="asset-preview"><img src="tethics-logo-monochrome.svg" alt="TETHICS monochrome logo" /></div>
+            <h3>Monochrome</h3>
+            <p>Use for print, embossing, and neutral export contexts.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <p class="eyebrow">Color System</p>
+        <h2>Primary palette</h2>
+        <div class="swatches">
+          <div class="swatch">
+            <div class="swatch-color" style="background:#12333c"></div>
+            <div class="swatch-meta"><strong>Governance Ink</strong><br /><code>#12333C</code></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#0f6c75"></div>
+            <div class="swatch-meta"><strong>Protocol Teal</strong><br /><code>#0F6C75</code></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#e9dcc6"></div>
+            <div class="swatch-meta"><strong>Paper Sand</strong><br /><code>#E9DCC6</code></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#efc07b"></div>
+            <div class="swatch-meta"><strong>Signal Gold</strong><br /><code>#EFC07B</code></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="grid">
+      <section class="panel">
+        <p class="eyebrow">Usage</p>
+        <h2>Recommended rules</h2>
+        <ul>
+          <li>Use the horizontal lockup by default in navigation, decks, docs, and social banners.</li>
+          <li>Use the mark-only asset for app icons, favicons, wallet entry points, and profile avatars.</li>
+          <li>Prefer the dark variant only on dark surfaces with enough breathing room.</li>
+          <li>Do not distort, recolor arbitrarily, or place the logo over noisy imagery.</li>
+          <li>Keep the tone institutional and protocol-first, not memecoin-like.</li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <p class="eyebrow">Exports</p>
+        <h2>Included deliverables</h2>
+        <ul>
+          <li>SVG source files for all primary lockups.</li>
+          <li>PNG fallback files for older environments and app icon surfaces.</li>
+          <li>Open Graph social card artwork.</li>
+          <li>Printable brand sheet: export this page to PDF from the browser when needed.</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</body>
+</html>

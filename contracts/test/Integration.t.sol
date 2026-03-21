@@ -7,6 +7,7 @@ import {ShieldFactory} from "../src/ShieldFactory.sol";
 import {Shield} from "../src/Shield.sol";
 import {IRegistry} from "../src/interfaces/IRegistry.sol";
 import {VerificationLib} from "../src/libraries/VerificationLib.sol";
+import {ISwapRouter} from "../src/interfaces/ISwapRouter.sol";
 
 /// @title IntegrationTest
 /// @notice End-to-end tests: register → approve → deploy shield → report unauthorized token → drain to charity
@@ -19,6 +20,7 @@ contract IntegrationTest is Test {
     MockERC20 public badToken;
 
     address public charity = makeAddr("charity");
+    uint256 public charityId;
     address public reporter = makeAddr("reporter");
     address public buyer1 = makeAddr("buyer1");
     address public buyer2 = makeAddr("buyer2");
@@ -30,8 +32,9 @@ contract IntegrationTest is Test {
 
     function setUp() public {
         founder = vm.addr(founderKey);
-        swapRouter = new MockSwapRouter();
         weth = new MockWETH();
+        swapRouter = new MockSwapRouter(weth);
+        deal(address(swapRouter), 100 ether);
         badToken = new MockERC20("ScamToken", "SCAM");
 
         // Bootstrap: Registry needs factory address; ShieldFactory needs registry address.
@@ -47,6 +50,7 @@ contract IntegrationTest is Test {
 
         factory = new ShieldFactory(address(registry), address(swapRouter), address(weth));
         require(address(factory) == predictedFactory, "Factory address prediction failed");
+        charityId = registry.addCharityOption("GiveDirectly", charity, "ipfs://charity");
     }
 
     // ─── Full Flow Test ────────────────────────────────────────────────────────
@@ -72,7 +76,7 @@ contract IntegrationTest is Test {
 
         // ── Step 3: Founder deploys Shield ──
         vm.prank(founder);
-        address shieldAddr = factory.deployShield("sovra", charity);
+        address shieldAddr = factory.deployShield("sovra", charityId);
         assertTrue(shieldAddr != address(0));
 
         Shield shield = Shield(payable(shieldAddr));
@@ -91,7 +95,7 @@ contract IntegrationTest is Test {
 
         // ── Step 5: Drain bad token to charity ──
         badToken.mint(shieldAddr, 10_000e18);
-        shield.drainToken(address(badToken));
+        shield.drainToken(address(badToken), 1);
         // MockSwapRouter accepts tokens and returns nothing (swap "works")
         assertEq(badToken.balanceOf(shieldAddr), 0);
 
@@ -192,25 +196,21 @@ contract IntegrationTest is Test {
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
 contract MockSwapRouter {
+    MockWETH public immutable weth;
+
+    constructor(MockWETH _weth) {
+        weth = _weth;
+    }
+
     // Accept tokens (approve is called by Shield), succeed silently
     function exactInputSingle(
-        ISwapRouterParams calldata params
+        ISwapRouter.ExactInputSingleParams calldata params
     ) external returns (uint256 amountOut) {
         // Drain tokens from caller to simulate swap
         IERC20Min(params.tokenIn).transferFrom(msg.sender, address(this), params.amountIn);
-        amountOut = 0; // return 0 ETH - charity gets nothing from swap in test
+        amountOut = 1;
+        weth.mint{value: amountOut}(params.recipient, amountOut);
     }
-}
-
-struct ISwapRouterParams {
-    address tokenIn;
-    address tokenOut;
-    uint24 fee;
-    address recipient;
-    uint256 deadline;
-    uint256 amountIn;
-    uint256 amountOutMinimum;
-    uint160 sqrtPriceLimitX96;
 }
 
 interface IERC20Min {
@@ -220,6 +220,17 @@ interface IERC20Min {
 
 contract MockWETH {
     mapping(address => uint256) public balanceOf;
+
+    function mint(address to, uint256 amount) external payable {
+        require(msg.value == amount, "mint backing mismatch");
+        balanceOf[to] += amount;
+    }
+
+    function withdraw(uint256 amount) external {
+        balanceOf[msg.sender] -= amount;
+        (bool ok,) = payable(msg.sender).call{value: amount}("");
+        require(ok, "withdraw failed");
+    }
 
     receive() external payable {}
 }

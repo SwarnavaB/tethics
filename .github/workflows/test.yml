@@ -45,12 +45,10 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: watcher/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        working-directory: watcher
         run: npm ci
 
       - name: Build TypeScript
-        working-directory: watcher
-        run: npm run build
+        run: npm run build:watcher

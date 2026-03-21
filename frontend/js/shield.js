@@ -1,7 +1,12 @@
 // tethics - Shield contract interactions
 
+import { parseAbi } from 'https://esm.sh/viem@2';
 import { getPublicClient, getWalletClient, getAccount } from './registry.js';
 import { SHIELD_ABI } from './constants.js';
+
+const SHIELD_DRAIN_ABI = parseAbi([
+  'function drainToken(address tokenContract, uint256 minAmountOut)',
+]);
 
 // ── Read ──────────────────────────────────────────────────────────────────────
 
@@ -44,14 +49,14 @@ export async function getCharityDrainLogs(shieldAddress, fromBlock = 'earliest')
 
 // ── Write ─────────────────────────────────────────────────────────────────────
 
-export async function drainToken(shieldAddress, tokenAddress) {
+export async function drainToken(shieldAddress, tokenAddress, minAmountOut) {
   const wc = await getWalletClient();
   const account = await getAccount();
   return wc.writeContract({
     address: shieldAddress,
-    abi: SHIELD_ABI,
+    abi: SHIELD_DRAIN_ABI,
     functionName: 'drainToken',
-    args: [tokenAddress],
+    args: [tokenAddress, BigInt(minAmountOut)],
     account,
   });
 }

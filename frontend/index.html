@@ -3,47 +3,1130 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>tethics - Cryptographic Token Legitimacy</title>
-  <meta name="description" content="tethics lets founders cryptographically prove their identity and disavow unauthorized tokens. Fully onchain, zero infrastructure." />
-  <meta property="og:title" content="tethics" />
-  <meta property="og:description" content="Cryptographic proof of token legitimacy - fully onchain, zero infrastructure." />
+  <title>TETHICS | Cross-Chain Token Legitimacy</title>
+  <meta name="description" content="TETHICS is a cross-chain legitimacy and governance protocol for founders, reviewers, and the public across EVM and Solana ecosystems." />
+  <meta property="og:title" content="TETHICS" />
+  <meta property="og:description" content="Cross-chain token legitimacy, transparent governance, and public review infrastructure for EVM and Solana ecosystems." />
   <meta property="og:type" content="website" />
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>" />
+  <meta property="og:image" content="assets/tethics-og-card.png" />
+  <link rel="icon" type="image/svg+xml" href="assets/tethics-favicon.svg" />
+  <link rel="alternate icon" type="image/png" href="assets/tethics-favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f5efe7;
+      --paper: rgba(255, 252, 247, 0.9);
+      --paper-strong: #fffdf9;
+      --ink: #142227;
+      --muted: #5d6f78;
+      --line: rgba(20, 34, 39, 0.12);
+      --line-strong: rgba(20, 34, 39, 0.22);
+      --teal: #0f6c75;
+      --teal-deep: #12333c;
+      --gold: #efc07b;
+      --sand: #e9dcc6;
+      --danger: #b64632;
+      --shadow: 0 24px 56px rgba(20, 34, 39, 0.08);
+      --radius: 24px;
+      --radius-sm: 16px;
+      --font: "Inter", system-ui, sans-serif;
+      --display: "IBM Plex Sans", var(--font);
+      --mono: "JetBrains Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: var(--font);
+      background:
+        radial-gradient(circle at 9% 10%, rgba(239, 192, 123, 0.22), transparent 19%),
+        radial-gradient(circle at 88% 9%, rgba(15, 108, 117, 0.18), transparent 24%),
+        linear-gradient(180deg, #fcfbf8 0%, #f5efe7 46%, #ebdfcf 100%);
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .page {
+      width: min(1220px, calc(100vw - 2rem));
+      margin: 0 auto;
+      padding: 1.2rem 0 4rem;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.95rem 1.2rem;
+      margin-top: 0.8rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 251, 245, 0.76);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 12px 24px rgba(20, 34, 39, 0.04);
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.8rem;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      overflow: hidden;
+      flex: 0 0 auto;
+      box-shadow: 0 10px 22px rgba(18, 51, 60, 0.14);
+    }
+
+    .brand-mark img {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .brand-copy {
+      display: grid;
+      gap: 0.14rem;
+    }
+
+    .brand-wordmark {
+      font-family: var(--display);
+      font-size: 1rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      line-height: 1;
+    }
+
+    .brand-tag {
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .nav {
+      display: flex;
+      flex: 1;
+      justify-content: center;
+      gap: 0.35rem;
+      align-items: center;
+      overflow-x: auto;
+      scrollbar-width: none;
+      min-width: 0;
+    }
+
+    .nav::-webkit-scrollbar { display: none; }
+
+    .nav a {
+      padding: 0.55rem 0.9rem;
+      border-radius: 999px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .nav a:hover {
+      background: rgba(15, 108, 117, 0.08);
+      color: var(--ink);
+    }
+
+    .cta-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      flex: 0 0 auto;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0.78rem 1.15rem;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-weight: 700;
+      font-size: 0.94rem;
+      cursor: pointer;
+      transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+      white-space: nowrap;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+
+    .btn-primary {
+      background: var(--teal);
+      color: #fff;
+    }
+
+    .btn-primary:hover { background: #0b5961; }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.52);
+      color: var(--ink);
+      border-color: var(--line-strong);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(330px, 0.9fr);
+      gap: 1.2rem;
+      margin-top: 1.4rem;
+      align-items: stretch;
+    }
+
+    .hero-copy,
+    .hero-side,
+    .panel,
+    .metric-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-copy {
+      padding: 2.7rem;
+      background:
+        linear-gradient(135deg, rgba(255, 253, 249, 0.98), rgba(244, 236, 224, 0.9)),
+        linear-gradient(135deg, rgba(15, 108, 117, 0.04), rgba(159, 101, 27, 0.03));
+    }
+
+    .eyebrow {
+      margin: 0 0 0.7rem;
+      font-size: 0.74rem;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #9f651b;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      font-family: var(--display);
+      letter-spacing: -0.03em;
+    }
+
+    h1 {
+      max-width: 11ch;
+      font-size: clamp(2.9rem, 5vw, 5rem);
+      line-height: 0.94;
+    }
+
+    .hero-sub {
+      max-width: 56ch;
+      margin: 1.2rem 0 1.5rem;
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.65;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+    }
+
+    .hero-side {
+      overflow: hidden;
+      background:
+        radial-gradient(circle at top right, rgba(255,255,255,0.08), transparent 35%),
+        linear-gradient(180deg, #11252b, #18323b 55%, #1d4049);
+      color: #f7f0e5;
+    }
+
+    .hero-side-inner {
+      padding: 2rem;
+      height: 100%;
+      display: grid;
+      align-content: space-between;
+      gap: 1.2rem;
+    }
+
+    .side-list {
+      display: grid;
+      gap: 0.85rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .side-list li {
+      padding-bottom: 0.85rem;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      color: rgba(247, 240, 229, 0.8);
+    }
+
+    .side-list li:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1rem;
+      margin-top: 1.25rem;
+    }
+
+    .metric-card {
+      padding: 1.1rem 1.15rem;
+      background: rgba(255, 252, 247, 0.84);
+    }
+
+    .metric-label {
+      display: block;
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .metric-value {
+      display: block;
+      margin-top: 0.5rem;
+      font-family: var(--display);
+      font-size: 1.95rem;
+      letter-spacing: -0.04em;
+    }
+
+    .section {
+      margin-top: 1.4rem;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 1rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .section-sub {
+      max-width: 62ch;
+      color: var(--muted);
+      line-height: 1.65;
+      margin: 0.7rem 0 0;
+    }
+
+    .grid-2,
+    .grid-3 {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .panel {
+      padding: 1.35rem;
+      background: rgba(255, 252, 247, 0.86);
+    }
+
+    .panel.accent {
+      background: linear-gradient(180deg, rgba(255,252,247,0.97), rgba(237, 228, 213, 0.92));
+    }
+
+    .hero-copy,
+    .hero-side,
+    .metric-card,
+    .panel,
+    .mock-browser,
+    .footer-callout {
+      animation: riseIn 720ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+
+    .hero-side { animation-delay: 60ms; }
+    .metric-card:nth-child(1) { animation-delay: 90ms; }
+    .metric-card:nth-child(2) { animation-delay: 130ms; }
+    .metric-card:nth-child(3) { animation-delay: 170ms; }
+    .metric-card:nth-child(4) { animation-delay: 210ms; }
+
+    @keyframes riseIn {
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .panel h3 {
+      font-size: 1.18rem;
+      margin-bottom: 0.55rem;
+    }
+
+    .panel p,
+    .panel li {
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .audience-card {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .audience-card::after {
+      content: "";
+      position: absolute;
+      inset: auto -40px -40px auto;
+      width: 130px;
+      height: 130px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(15, 108, 117, 0.12), transparent 70%);
+      pointer-events: none;
+    }
+
+    .panel ul {
+      margin: 0.75rem 0 0;
+      padding-left: 1.1rem;
+    }
+
+    .architecture {
+      padding: 1.5rem;
+      overflow: auto;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.7), rgba(249, 244, 236, 0.86));
+    }
+
+    .stack {
+      display: grid;
+      gap: 0.85rem;
+      min-width: 680px;
+    }
+
+    .stack-layer {
+      display: grid;
+      grid-template-columns: 168px 1fr;
+      gap: 1rem;
+      align-items: start;
+      padding: 1rem 1.05rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: rgba(255,255,255,0.72);
+    }
+
+    .stack-label {
+      font-family: var(--display);
+      font-size: 1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .stack-body {
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .step-list {
+      counter-reset: step;
+      display: grid;
+      gap: 1rem;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 1rem;
+      align-items: start;
+      padding: 1rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: rgba(255,255,255,0.6);
+    }
+
+    .step::before {
+      counter-increment: step;
+      content: counter(step, decimal-leading-zero);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 56px;
+      height: 56px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, var(--teal-deep), var(--teal));
+      color: #fff;
+      font-family: var(--display);
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .mock-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .mock-browser {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.8);
+      box-shadow: 0 18px 36px rgba(20, 34, 39, 0.06);
+    }
+
+    .mock-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.8rem 1rem;
+      border-bottom: 1px solid var(--line);
+      background: rgba(249, 245, 239, 0.9);
+    }
+
+    .mock-dots {
+      display: inline-flex;
+      gap: 0.35rem;
+    }
+
+    .mock-dots span {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: #d8c8b2;
+    }
+
+    .mock-url {
+      flex: 1;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0.45rem 0.7rem;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-family: var(--mono);
+      background: rgba(255,255,255,0.7);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mock-body {
+      padding: 1rem;
+      display: grid;
+      gap: 0.8rem;
+      background: linear-gradient(180deg, rgba(255,255,255,0.74), rgba(246, 239, 229, 0.84));
+    }
+
+    .mock-card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 0.9rem;
+      background: rgba(255,255,255,0.66);
+    }
+
+    .mock-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: center;
+      margin-bottom: 0.65rem;
+    }
+
+    .mock-title strong {
+      font-family: var(--display);
+      letter-spacing: -0.02em;
+    }
+
+    .mock-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.35rem 0.6rem;
+      border-radius: 999px;
+      background: rgba(15, 108, 117, 0.08);
+      color: var(--teal);
+      font-size: 0.72rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .mock-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.7rem;
+      margin-top: 0.7rem;
+    }
+
+    .mock-field {
+      padding: 0.6rem 0.7rem;
+      border-radius: 14px;
+      background: rgba(20, 34, 39, 0.04);
+      color: var(--muted);
+      font-size: 0.8rem;
+      line-height: 1.5;
+    }
+
+    .mock-field strong {
+      display: block;
+      color: var(--ink);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.2rem;
+    }
+
+    .mock-bar {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(20, 34, 39, 0.08);
+      overflow: hidden;
+    }
+
+    .mock-bar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--teal-deep), var(--teal));
+    }
+
+    .note {
+      margin-top: 1rem;
+      padding: 1rem 1.05rem;
+      border-radius: var(--radius-sm);
+      background: rgba(15, 108, 117, 0.06);
+      border: 1px solid rgba(15, 108, 117, 0.12);
+      color: var(--muted);
+    }
+
+    .footer-callout {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: 1.4rem;
+      padding: 1.25rem 1.35rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 252, 247, 0.82);
+      box-shadow: var(--shadow);
+    }
+
+    .mono {
+      font-family: var(--mono);
+      font-size: 0.92em;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.55rem 0.8rem;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.54);
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-right: 0.45rem;
+      margin-bottom: 0.45rem;
+    }
+
+    .faq-list {
+      display: grid;
+      gap: 0.9rem;
+      margin-top: 1rem;
+    }
+
+    .faq-item {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: rgba(255,255,255,0.66);
+      overflow: hidden;
+    }
+
+    .faq-item summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 1rem 1.05rem;
+      font-weight: 700;
+      font-family: var(--display);
+      letter-spacing: -0.01em;
+    }
+
+    .faq-item summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .faq-item p {
+      margin: 0;
+      padding: 0 1.05rem 1rem;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .trust-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .trust-card {
+      padding: 1rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: rgba(255,255,255,0.68);
+    }
+
+    .trust-card strong {
+      display: block;
+      margin-bottom: 0.45rem;
+      font-family: var(--display);
+    }
+
+    @media (max-width: 1040px) {
+      .hero,
+      .grid-2,
+      .grid-3,
+      .metrics,
+      .footer-callout,
+      .mock-grid,
+      .trust-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        border-radius: 28px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+
+      .nav,
+      .cta-row {
+        width: 100%;
+      }
+
+      .cta-row {
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page {
+        width: min(100vw - 1rem, 100%);
+        padding-top: 0.5rem;
+      }
+
+      .topbar,
+      .hero-copy,
+      .hero-side-inner,
+      .panel,
+      .architecture,
+      .metric-card {
+        padding: 1.1rem;
+      }
+
+      h1 { max-width: none; }
+
+      .brand-tag { display: none; }
+
+      .stack { min-width: 0; }
+
+      .stack-layer,
+      .step,
+      .footer-callout,
+      .section-head {
+        grid-template-columns: 1fr;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .mock-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
-  <header>
-    <a href="#/" class="logo">tethics</a>
-    <nav>
-      <a href="#/">Home</a>
-      <a href="#/verify">Verify</a>
-      <a href="#/register">Register</a>
-      <a href="#/dashboard">Dashboard</a>
-      <a href="#/leaderboard">Leaderboard</a>
-    </nav>
-    <div class="header-right">
-      <span class="network-badge" id="network-badge">Base Sepolia</span>
-      <button class="btn btn-secondary" id="connect-btn">Connect Wallet</button>
-    </div>
-  </header>
+  <div class="page">
+    <header class="topbar">
+      <a href="#top" class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <img src="assets/tethics-logo-mark.svg" alt="" />
+        </span>
+        <span class="brand-copy">
+          <span class="brand-wordmark">TETHICS</span>
+          <span class="brand-tag">Cross-chain legitimacy protocol</span>
+        </span>
+      </a>
 
-  <main id="main-content">
-    <div class="spinner"></div>
-  </main>
+      <nav class="nav">
+        <a href="#why">Why</a>
+        <a href="#how">How It Works</a>
+        <a href="#governance">Governance</a>
+        <a href="#flow">Founder Flow</a>
+        <a href="#enter">Enter Platform</a>
+      </nav>
 
-  <footer>
-    <p>
-      tethics is open-source software.
-      <a href="https://github.com/SwarnavaB/tethics" target="_blank" rel="noopener">GitHub</a> ·
-      <a href="#/verify">Verify a Token</a> ·
-      <a href="https://basescan.org" target="_blank" rel="noopener">Base Explorer</a>
-    </p>
-    <p style="margin-top:0.4rem">Smart contracts on <strong>Base</strong>. No backend. No admin keys. No upgradability.</p>
-  </footer>
+      <div class="cta-row">
+        <a class="btn btn-secondary" href="https://github.com/SwarnavaB/tethics" target="_blank" rel="noopener">GitHub</a>
+        <a class="btn btn-primary" href="app.html#/">Open Platform</a>
+      </div>
+    </header>
 
-  <script type="module" src="js/app.js"></script>
+    <section class="hero" id="top">
+      <div class="hero-copy">
+        <p class="eyebrow">Public Utility For Token Legitimacy</p>
+        <h1>Protect projects from fake launches across EVM and Solana.</h1>
+        <p class="hero-sub">TETHICS gives founders a public, onchain way to propose projects, prove legitimacy, approve official assets, mark unwanted launches, and delegate governance over time. The protocol is designed for transparency first: public evidence, explicit reviewer roles, native EVM and Solana flows, and no hidden moderation backend.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="app.html#/">Enter TETHICS</a>
+          <a class="btn btn-secondary" href="app.html#/governance">View Governance Surface</a>
+        </div>
+        <div class="note">
+          This page is the public introduction to TETHICS. Use the call-to-action buttons to open the live platform, governance surface, verification flows, or founder onboarding when you are ready.
+        </div>
+      </div>
+
+      <aside class="hero-side">
+        <div class="hero-side-inner">
+          <div>
+            <p class="eyebrow" style="color:#efc07b">Platform Entry</p>
+            <ul class="side-list">
+              <li>Founder submission and project proposal flows</li>
+              <li>EVM registry review, charity routing, and shield deployment</li>
+              <li>Native Solana governance, role delegation, and asset approval</li>
+              <li>Public verification for tokens, mints, creators, and evidence bundles</li>
+            </ul>
+          </div>
+
+          <div class="note" style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.12); color:rgba(247,240,229,0.82);">
+            <strong style="display:block; margin-bottom:0.35rem; color:#fff;">Live application entry</strong>
+            <span class="mono">app.html#/</span>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="metrics">
+      <article class="metric-card">
+        <span class="metric-label">Chains Covered</span>
+        <strong class="metric-value">2</strong>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">Governance Planes</span>
+        <strong class="metric-value">EVM + SOL</strong>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">Infra Model</span>
+        <strong class="metric-value">Static + Onchain</strong>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">Review Posture</span>
+        <strong class="metric-value">Transparent</strong>
+      </article>
+    </section>
+
+    <section class="section" id="why">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Why TETHICS</p>
+          <h2>A legitimacy layer, not a marketing page</h2>
+          <p class="section-sub">Most launch surfaces make it easy to impersonate a real project. TETHICS is built to answer a stricter question: who is actually authorized to represent this project onchain, and where is that decision recorded?</p>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <article class="panel accent">
+          <h3>Founder-first verification</h3>
+          <p>Projects propose themselves and attach proof material directly from the UI. Nothing depends on a private support desk or opaque moderation queue.</p>
+        </article>
+        <article class="panel">
+          <h3>Native chain governance</h3>
+          <p>EVM projects use EVM governance. Solana projects use Solana-native governance. The product surface is unified, but the authority model stays chain-correct.</p>
+        </article>
+        <article class="panel">
+          <h3>Public review trail</h3>
+          <p>Approvals, rejections, delegated reviewers, charity routing options, and review artifacts are intended to be inspectable rather than hidden behind a backend.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Built For Different Users</p>
+          <h2>One protocol, three operating audiences</h2>
+          <p class="section-sub">TETHICS is not just a verifier. It is a working system for founders, reviewers, and the public, each with distinct surfaces and responsibilities.</p>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <article class="panel audience-card">
+          <h3>For founders</h3>
+          <p>Propose projects, connect wallets, publish proof bundles, and maintain official asset records without relying on centralized launch venues to represent you correctly.</p>
+        </article>
+        <article class="panel audience-card accent">
+          <h3>For curators and reviewers</h3>
+          <p>Review pending proposals, delegate scoped roles, manage charity routing options, and publish legitimacy decisions through explicit governance controls.</p>
+        </article>
+        <article class="panel audience-card">
+          <h3>For users and communities</h3>
+          <p>Verify contracts, mints, creator wallets, and review artifacts from a public frontend designed to surface decisions rather than hide them.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="how">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">How It Works</p>
+          <h2>Protocol structure</h2>
+          <p class="section-sub">TETHICS separates public coordination, project-level asset authorization, governance delegation, and frontend verification into explicit layers so the system stays inspectable as it grows.</p>
+        </div>
+      </div>
+
+      <div class="panel architecture">
+        <div class="stack">
+          <div class="stack-layer">
+            <div class="stack-label">Layer 1<br />Project Proposal</div>
+            <div class="stack-body">Founders connect wallets, submit project claims, upload public proof bundles, and anchor legitimacy requests through chain-native flows.</div>
+          </div>
+          <div class="stack-layer">
+            <div class="stack-label">Layer 2<br />Review + Approval</div>
+            <div class="stack-body">Curators and delegated reviewers approve, reject, or revoke claims and assets. Decisions are tied to explicit authority roles rather than hidden operators.</div>
+          </div>
+          <div class="stack-layer">
+            <div class="stack-label">Layer 3<br />Asset Registry</div>
+            <div class="stack-body">Official EVM tokens, Solana mints, creator wallets, and unwanted assets are recorded per project so verification is project-centric, not chain-siloed.</div>
+          </div>
+          <div class="stack-layer">
+            <div class="stack-label">Layer 4<br />Public Verification</div>
+            <div class="stack-body">Users, wallets, communities, and explorers can verify current legitimacy status from the TETHICS frontend without relying on a private backend.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Product Views</p>
+          <h2>What the live platform is designed to feel like</h2>
+          <p class="section-sub">The platform is meant to operate like a legitimacy and governance console, not a generic token microsite. These mock frames reflect the intended product posture.</p>
+        </div>
+      </div>
+
+      <div class="mock-grid">
+        <article class="mock-browser">
+          <div class="mock-topbar">
+            <div class="mock-dots"><span></span><span></span><span></span></div>
+            <div class="mock-url">tethics.eth/app.html#/dashboard</div>
+          </div>
+          <div class="mock-body">
+            <div class="mock-card">
+              <div class="mock-title">
+                <strong>Founder workspace</strong>
+                <span class="mock-pill">Live review state</span>
+              </div>
+              <div class="mock-bar"><span style="width: 72%"></span></div>
+              <div class="mock-row">
+                <div class="mock-field"><strong>Pending claims</strong>2 proposals awaiting review</div>
+                <div class="mock-field"><strong>Approved assets</strong>Base token, Solana mint, creator wallet</div>
+              </div>
+            </div>
+            <div class="mock-card">
+              <div class="mock-title">
+                <strong>Recent legitimacy output</strong>
+                <span class="mock-pill">Transparent</span>
+              </div>
+              <div class="mock-row">
+                <div class="mock-field"><strong>Decision</strong>Approved project record with evidence URI</div>
+                <div class="mock-field"><strong>Reviewer</strong>Delegated approver, chain-native authority</div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="mock-browser">
+          <div class="mock-topbar">
+            <div class="mock-dots"><span></span><span></span><span></span></div>
+            <div class="mock-url">tethics.eth/app.html#/governance</div>
+          </div>
+          <div class="mock-body">
+            <div class="mock-card">
+              <div class="mock-title">
+                <strong>Protocol governance</strong>
+                <span class="mock-pill">Root + delegates</span>
+              </div>
+              <div class="mock-row">
+                <div class="mock-field"><strong>EVM</strong>Owner, Base approvers, charity managers</div>
+                <div class="mock-field"><strong>Solana</strong>Root authority, approver PDAs, pause state</div>
+              </div>
+            </div>
+            <div class="mock-card">
+              <div class="mock-title">
+                <strong>Queue health</strong>
+                <span class="mock-pill">Operational view</span>
+              </div>
+              <div class="mock-bar"><span style="width: 46%"></span></div>
+              <div class="mock-row">
+                <div class="mock-field"><strong>Backlog</strong>Reviewable, public, chain-split</div>
+                <div class="mock-field"><strong>Controls</strong>Ownership transfer, role delegation, pause</div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="governance">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Governance</p>
+          <h2>Professional, explicit, and delegation-ready</h2>
+          <p class="section-sub">TETHICS begins curator-led under <span class="mono">tethics.eth</span> and <span class="mono">tethics.sol</span>, but the operating model is designed to expand into delegated public stewardship through scoped roles rather than vague community promises.</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <article class="panel">
+          <h3>EVM governance surface</h3>
+          <p>The Base side is responsible for owner authority, reviewer delegation, charity manager delegation, founder registration review, and shield/charity selection flows.</p>
+          <div>
+            <span class="pill">Owner transfer</span>
+            <span class="pill">Approver delegation</span>
+            <span class="pill">Charity managers</span>
+            <span class="pill">Review queue</span>
+          </div>
+        </article>
+
+        <article class="panel accent">
+          <h3>Solana governance surface</h3>
+          <p>The Solana side is native, not routed through EVM. It covers root authority, delegated approvers, pause controls, proposal review, and asset record updates directly on Solana.</p>
+          <div>
+            <span class="pill">Root rotation</span>
+            <span class="pill">Approver PDAs</span>
+            <span class="pill">Pause control</span>
+            <span class="pill">Native review</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Trust Layer</p>
+          <h2>Security and operating posture</h2>
+          <p class="section-sub">The goal is not just legitimacy claims, but legitimacy claims under a governance and evidence model that can survive scrutiny.</p>
+        </div>
+      </div>
+
+      <div class="trust-grid">
+        <article class="trust-card">
+          <strong>Onchain role visibility</strong>
+          <p>Reviewers, approvers, charity managers, and root authorities are meant to be explicit rather than implied by offchain moderation.</p>
+        </article>
+        <article class="trust-card">
+          <strong>Public artifacts</strong>
+          <p>Evidence bundles, review decisions, and authorization records are intended to resolve through durable public references rather than a hidden backend.</p>
+        </article>
+        <article class="trust-card">
+          <strong>Chain-native execution</strong>
+          <p>EVM and Solana use their own governance surfaces so the protocol does not fake cross-chain authority through a single backend coordinator.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="flow">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Founder Flow</p>
+          <h2>What a project owner actually does</h2>
+          <p class="section-sub">The product entry is operational, not decorative. Founders are expected to move from proposal to review to asset approval inside the platform.</p>
+        </div>
+      </div>
+
+      <div class="step-list">
+        <article class="step panel">
+          <div>
+            <h3>Propose the project</h3>
+            <p>Connect the relevant wallet, submit the project slug and proof package, and anchor the claim through the appropriate EVM or Solana flow.</p>
+          </div>
+        </article>
+        <article class="step panel">
+          <div>
+            <h3>Undergo review</h3>
+            <p>The initial curator or delegated reviewer validates the evidence bundle, linked wallets, and launch context before publishing any approval.</p>
+          </div>
+        </article>
+        <article class="step panel">
+          <div>
+            <h3>Authorize official assets</h3>
+            <p>After approval, official contracts, mints, creator wallets, and related records become queryable inside the platform’s verification surfaces.</p>
+          </div>
+        </article>
+        <article class="step panel">
+          <div>
+            <h3>Respond to impersonation</h3>
+            <p>Unwanted tokens or mints can be marked publicly, with review evidence and governance attribution visible to users and communities.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">FAQ</p>
+          <h2>Common questions before entering the platform</h2>
+        </div>
+      </div>
+
+      <div class="faq-list">
+        <details class="faq-item" open>
+          <summary>Is this a backend-heavy moderation product?</summary>
+          <p>No. The intended model is static frontend plus onchain coordination plus public evidence artifacts. The legitimacy surface should be inspectable, not hidden in an admin backend.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Does TETHICS only support EVM projects?</summary>
+          <p>No. EVM projects use EVM-native governance and Solana projects use Solana-native governance. The user-facing product is unified, but the authority flows stay chain-correct.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Who controls approvals at the beginning?</summary>
+          <p>The initial curated phase is rooted in <span class="mono">tethics.eth</span> and <span class="mono">tethics.sol</span>, with explicit delegation paths for reviewers and other scoped roles over time.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Why redirect at all?</summary>
+          <p>It does not. This page is the public-facing introduction to the protocol. Entering the application is an explicit user action through the CTA buttons.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="section" id="enter">
+      <div class="footer-callout">
+        <div>
+          <p class="eyebrow">Enter TETHICS</p>
+          <h2>Open the platform and start using the live surfaces.</h2>
+          <p class="section-sub" style="margin-top:0.5rem">Use the app for project registration, verification, dashboard operations, and governance controls.</p>
+        </div>
+        <div class="cta-row">
+          <a class="btn btn-secondary" href="app.html#/verify">Open Verify</a>
+          <a class="btn btn-secondary" href="app.html#/register">Founder Onboarding</a>
+          <a class="btn btn-primary" href="app.html#/">Open Platform</a>
+        </div>
+      </div>
+    </section>
+  </div>
+
 </body>
 </html>
