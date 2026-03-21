@@ -4,10 +4,7 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {Registry} from "../src/Registry.sol";
 import {ShieldFactory} from "../src/ShieldFactory.sol";
-import {Shield} from "../src/Shield.sol";
-import {IShield} from "../src/interfaces/IShield.sol";
 import {VerificationLib} from "../src/libraries/VerificationLib.sol";
-import {StringUtils} from "../src/libraries/StringUtils.sol";
 
 /// @title ShieldFactoryTest
 /// @notice Unit tests for ShieldFactory.sol
@@ -18,6 +15,7 @@ contract ShieldFactoryTest is Test {
     address public swapRouter = makeAddr("swapRouter");
     address public weth = makeAddr("weth");
     address public charity = makeAddr("charity");
+    uint256 public charityId;
 
     uint256 public founderKey = 0xA11CE;
     address public founder;
@@ -25,44 +23,44 @@ contract ShieldFactoryTest is Test {
     function setUp() public {
         founder = vm.addr(founderKey);
 
-        // Deploy factory first (registry needs factory address)
-        // Bootstrap: deploy registry with placeholder, then deploy factory
-        // In production Deploy.s.sol handles this via pre-computed addresses
-        registry = new Registry(address(0)); // temp: factory = zero, will be replaced in deploy script
-        // For tests, we deploy a factory pointing to this registry
+        uint256 currentNonce = vm.getNonce(address(this));
+        address predictedFactory = vm.computeCreateAddress(address(this), currentNonce + 1);
+
+        registry = new Registry(predictedFactory);
         factory = new ShieldFactory(address(registry), swapRouter, weth);
+        charityId = registry.addCharityOption("GiveDirectly", charity, "ipfs://charity");
     }
 
     function test_deployShield_mustBeFounder() public {
         _registerProject("myproject");
         address notFounder = makeAddr("notFounder");
         vm.prank(notFounder);
-        vm.expectRevert("ShieldFactory: caller is not founder");
-        factory.deployShield("myproject", charity);
+        vm.expectRevert(abi.encodeWithSelector(ShieldFactory.NotFounder.selector, notFounder, founder));
+        factory.deployShield("myproject", charityId);
     }
 
     function test_deployShield_projectNotRegistered_reverts() public {
         vm.prank(founder);
         vm.expectRevert(ShieldFactory.ProjectNotRegistered.selector);
-        factory.deployShield("unregistered", charity);
+        factory.deployShield("unregistered", charityId);
     }
 
-    function test_deployShield_zeroCharity_reverts() public {
+    function test_deployShield_inactiveCharity_reverts() public {
         _registerProject("myproject");
+        registry.updateCharityOption(charityId, "GiveDirectly", charity, "ipfs://charity", false);
         vm.prank(founder);
-        vm.expectRevert(ShieldFactory.InvalidCharity.selector);
-        factory.deployShield("myproject", address(0));
+        vm.expectRevert(abi.encodeWithSelector(ShieldFactory.InactiveCharityOption.selector, charityId));
+        factory.deployShield("myproject", charityId);
     }
 
     function test_predictShieldAddress_matchesDeployed() public {
         _registerProject("myproject");
 
-        address predicted = factory.predictShieldAddress(founder, "myproject");
+        address predicted = factory.predictShieldAddress(founder, "myproject", charityId);
 
-        // predicted address won't exactly match (charity arg differs in initCodeHash)
-        // but we can verify the format - for production, the predict function would need
-        // the charity address too. Test that address is non-zero.
-        assertTrue(predicted != address(0));
+        vm.prank(founder);
+        address deployed = factory.deployShield("myproject", charityId);
+        assertEq(predicted, deployed);
     }
 
     // ─── Internal Helpers ─────────────────────────────────────────────────────

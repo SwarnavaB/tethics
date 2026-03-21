@@ -27,6 +27,52 @@ interface IRegistry {
         bool exists;
     }
 
+    /// @notice Public view of a cross-chain founder claim anchored for review
+    struct ExternalClaimView {
+        uint256 claimId;
+        bytes32 nameHash;
+        string name;
+        string ecosystem;
+        address proposer;
+        bytes32 payloadHash;
+        string metadataURI;
+        uint256 submittedAt;
+        bool exists;
+        bool reviewed;
+        bool approved;
+        address reviewer;
+        uint256 reviewedAt;
+        bytes32 resolutionHash;
+        string resolutionURI;
+        string reviewNotes;
+    }
+
+    /// @notice Public view of a non-EVM asset authorization record
+    struct ExternalAssetView {
+        bytes32 nameHash;
+        string name;
+        string ecosystem;
+        string assetType;
+        string assetId;
+        string metadataURI;
+        bool authorized;
+        address updatedBy;
+        uint256 updatedAt;
+        bool exists;
+    }
+
+    /// @notice Public view of an approved charity option for Shield deployment
+    struct CharityOptionView {
+        uint256 charityId;
+        string name;
+        address payoutAddress;
+        string metadataURI;
+        bool active;
+        uint256 createdAt;
+        uint256 updatedAt;
+        bool exists;
+    }
+
     // ─── Events ───────────────────────────────────────────────────────────────
 
     /// @notice Emitted when contract ownership is transferred
@@ -37,6 +83,12 @@ interface IRegistry {
 
     /// @notice Emitted when an approver is removed
     event ApproverRemoved(address indexed approver);
+
+    /// @notice Emitted when a charity manager is added
+    event CharityManagerAdded(address indexed manager);
+
+    /// @notice Emitted when a charity manager is removed
+    event CharityManagerRemoved(address indexed manager);
 
     /// @notice Emitted when a founder submits a registration (awaiting approval)
     event RegistrationSubmitted(
@@ -91,10 +143,71 @@ interface IRegistry {
     /// @notice Emitted when a registration dispute is resolved
     event DisputeResolved(bytes32 indexed nameHash, address indexed newFounder);
 
+    /// @notice Emitted when a founder anchors a non-EVM or cross-chain project claim for review
+    event ExternalClaimSubmitted(
+        uint256 indexed claimId,
+        bytes32 indexed nameHash,
+        string name,
+        string ecosystem,
+        address indexed proposer,
+        bytes32 payloadHash,
+        string metadataURI
+    );
+
+    /// @notice Emitted when a curator or approver reviews an anchored external claim
+    event ExternalClaimReviewed(
+        uint256 indexed claimId,
+        bytes32 indexed nameHash,
+        string name,
+        string ecosystem,
+        address indexed reviewer,
+        bool approved,
+        bytes32 resolutionHash,
+        string resolutionURI,
+        string reviewNotes
+    );
+
+    /// @notice Emitted when a non-EVM asset is authorized for a project
+    event ExternalAssetAuthorized(
+        bytes32 indexed nameHash,
+        bytes32 indexed assetKey,
+        string name,
+        string ecosystem,
+        string assetType,
+        string assetId,
+        address indexed actor,
+        string metadataURI
+    );
+
+    /// @notice Emitted when a non-EVM asset authorization is revoked
+    event ExternalAssetRevoked(
+        bytes32 indexed nameHash,
+        bytes32 indexed assetKey,
+        string name,
+        string ecosystem,
+        string assetType,
+        string assetId,
+        address indexed actor,
+        string metadataURI
+    );
+
+    /// @notice Emitted when a charity option is added or updated
+    event CharityOptionConfigured(
+        uint256 indexed charityId,
+        string name,
+        address indexed payoutAddress,
+        string metadataURI,
+        bool active,
+        address indexed actor
+    );
+
     // ─── Errors ───────────────────────────────────────────────────────────────
 
     error NotOwner();
     error NotApprover();
+    error ZeroOwner();
+    error InvalidApproverAddress();
+    error InvalidCharityManagerAddress();
     error RegistrationPending(bytes32 nameHash);
     error NoPendingRegistration(bytes32 nameHash);
     error ProjectAlreadyExists(bytes32 nameHash);
@@ -103,11 +216,30 @@ interface IRegistry {
     error TokenAlreadyAuthorized(address tokenContract);
     error TokenNotAuthorized(address tokenContract);
     error TokenIsAuthorized(address tokenContract);
+    error InvalidTokenContract();
+    error InvalidAdditionalAddress();
+    error InvalidShieldContract();
     error InvalidProjectName();
+    error InvalidCharityAddress();
+    error InvalidCharityName();
     error ChallengeWindowOpen();
     error ChallengeWindowClosed();
     error ShieldAlreadyLinked();
     error OnlyShieldFactory();
+    error DuplicateUnauthorizedReport(address reporter, address tokenContract);
+    error InvalidEcosystem();
+    error EmptyPayloadHash();
+    error MissingMetadataURI();
+    error MissingResolutionHash();
+    error MissingResolutionURI();
+    error NoExternalClaim(uint256 claimId);
+    error ExternalClaimAlreadyReviewed(uint256 claimId);
+    error NoExternalAsset(bytes32 assetKey);
+    error InvalidAssetType();
+    error InvalidAssetId();
+    error NotExternalAssetManager(address caller);
+    error NoCharityOption(uint256 charityId);
+    error InactiveCharityOption(uint256 charityId);
 
     // ─── Governance Functions ─────────────────────────────────────────────────
 
@@ -122,6 +254,30 @@ interface IRegistry {
     /// @notice Remove an address from the approver set (owner only)
     /// @param approver Address to revoke approver rights from
     function removeApprover(address approver) external;
+
+    /// @notice Add an address to the charity manager set (owner only)
+    /// @param manager Address to grant charity catalog management rights
+    function addCharityManager(address manager) external;
+
+    /// @notice Remove an address from the charity manager set (owner only)
+    /// @param manager Address to revoke charity catalog management rights from
+    function removeCharityManager(address manager) external;
+
+    /// @notice Add a new approved charity option for future Shield deployments
+    function addCharityOption(
+        string calldata name,
+        address payoutAddress,
+        string calldata metadataURI
+    ) external returns (uint256 charityId);
+
+    /// @notice Update an existing charity option and its active status
+    function updateCharityOption(
+        uint256 charityId,
+        string calldata name,
+        address payoutAddress,
+        string calldata metadataURI,
+        bool active
+    ) external;
 
     // ─── Approval Functions ───────────────────────────────────────────────────
 
@@ -177,6 +333,51 @@ interface IRegistry {
         VerificationLib.Proof[] calldata proofs
     ) external;
 
+    /// @notice Anchor a cross-chain founder claim for public review
+    /// @param name Project name
+    /// @param ecosystem External ecosystem label such as SOLANA
+    /// @param payloadHash Hash of the offchain proposal package
+    /// @param metadataURI Public URI for the proposal package or evidence bundle
+    /// @return claimId Sequential claim id
+    function submitExternalClaim(
+        string calldata name,
+        string calldata ecosystem,
+        bytes32 payloadHash,
+        string calldata metadataURI
+    ) external returns (uint256 claimId);
+
+    /// @notice Review an anchored external claim
+    /// @param claimId Claim id to review
+    /// @param approved Whether the claim is approved
+    /// @param reviewNotes Human-readable review notes
+    /// @param resolutionHash Hash of the final review artifact or signed bundle
+    /// @param resolutionURI Public URI for the final review artifact or signed bundle
+    function reviewExternalClaim(
+        uint256 claimId,
+        bool approved,
+        string calldata reviewNotes,
+        bytes32 resolutionHash,
+        string calldata resolutionURI
+    ) external;
+
+    /// @notice Authorize a non-EVM asset such as a Solana mint or Bags creator identifier
+    function authorizeExternalAsset(
+        string calldata name,
+        string calldata ecosystem,
+        string calldata assetType,
+        string calldata assetId,
+        string calldata metadataURI
+    ) external;
+
+    /// @notice Revoke a non-EVM asset authorization
+    function revokeExternalAsset(
+        string calldata name,
+        string calldata ecosystem,
+        string calldata assetType,
+        string calldata assetId,
+        string calldata metadataURI
+    ) external;
+
     // ─── View Functions ────────────────────────────────────────────────────────
 
     /// @notice Check if a token is authorized by a project's founder
@@ -209,4 +410,20 @@ interface IRegistry {
     /// @param name Project name
     /// @return True if pending
     function isPending(string calldata name) external view returns (bool);
+
+    /// @notice Get the full public record for an anchored external claim
+    /// @param claimId Claim id
+    /// @return ExternalClaimView struct
+    function getExternalClaim(uint256 claimId) external view returns (ExternalClaimView memory);
+
+    /// @notice Get a non-EVM asset authorization record
+    function getExternalAsset(
+        string calldata name,
+        string calldata ecosystem,
+        string calldata assetType,
+        string calldata assetId
+    ) external view returns (ExternalAssetView memory);
+
+    /// @notice Get an approved charity option by id
+    function getCharityOption(uint256 charityId) external view returns (CharityOptionView memory);
 }

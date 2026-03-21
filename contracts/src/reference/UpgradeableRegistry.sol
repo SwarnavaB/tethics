@@ -1,41 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {IRegistry} from "./interfaces/IRegistry.sol";
-import {VerificationLib} from "./libraries/VerificationLib.sol";
-import {StringUtils} from "./libraries/StringUtils.sol";
+import {IRegistry} from "../interfaces/IRegistry.sol";
+import {VerificationLib} from "../libraries/VerificationLib.sol";
+import {StringUtils} from "../libraries/StringUtils.sol";
+import {Initializable} from "./Initializable.sol";
 
-/// @title Registry
-/// @notice Onchain registry of verified projects and their authorized tokens.
-///         Deployed once per chain; acts as a public utility.
-/// @dev    Founders submit registrations with multi-signal proofs. The contract owner
-///         (initially the tethics.eth holder) and any delegated approvers review off-chain
-///         proofs and approve or reject registrations. Anyone can query authorization status.
-///         No upgrade keys, no token, no fees.
-contract Registry is IRegistry {
+/// @title UpgradeableRegistry
+/// @notice Upgradeable reference implementation of the tethics registry.
+/// @dev Uses initializer-based setup for proxy deployments. The shield factory
+///      reference is mutable by the owner so proxy deployments can bootstrap
+///      the registry/factory dependency without constructor-time immutables.
+contract UpgradeableRegistry is IRegistry, Initializable {
     using VerificationLib for VerificationLib.Proof[];
     using StringUtils for string;
 
-    // ─── Constants ────────────────────────────────────────────────────────────
-
-    /// @notice Duration of the challenge window after a registration is approved (48 hours)
     uint256 public constant CHALLENGE_WINDOW = 48 hours;
 
-    /// @notice Address of the ShieldFactory - only it may call linkShield
-    address public immutable shieldFactory;
+    event ShieldFactoryUpdated(address indexed previousFactory, address indexed newFactory);
 
-    // ─── Governance Storage ───────────────────────────────────────────────────
-
-    /// @notice Owner of this registry; can add/remove approvers and transfer ownership
+    address public shieldFactory;
     address public owner;
-
-    /// @notice Addresses authorised to approve or reject pending registrations
     mapping(address => bool) public isApprover;
-
-    /// @notice Addresses authorised to curate the charity catalog
     mapping(address => bool) public isCharityManager;
-
-    // ─── Project Storage ──────────────────────────────────────────────────────
 
     struct Project {
         address founder;
@@ -104,47 +91,37 @@ contract Registry is IRegistry {
         bool exists;
     }
 
-    /// @dev projectName hash => active Project
     mapping(bytes32 => Project) private _projects;
-
-    /// @dev projectName hash => PendingProject (awaiting approval)
     mapping(bytes32 => PendingProject) private _pendingProjects;
-
-    /// @dev projectName hash => tokenContract => authorized
     mapping(bytes32 => mapping(address => bool)) private _authorizedTokens;
-
-    /// @dev reporter address => number of successful reports
     mapping(address => uint256) public reporterScore;
-
-    /// @dev projectName hash => tokenContract => reporter => already reported
     mapping(bytes32 => mapping(address => mapping(address => bool))) private _unauthorizedReports;
-
-    /// @dev incremental id for externally anchored claims
     uint256 public externalClaimCount;
-
-    /// @dev claim id => anchored external claim
     mapping(uint256 => ExternalClaim) private _externalClaims;
-
-    /// @dev project name hash => external asset key => external asset record
     mapping(bytes32 => mapping(bytes32 => ExternalAsset)) private _externalAssets;
-
-    /// @dev incremental id for approved charity options
     uint256 public charityOptionCount;
-
-    /// @dev charity id => approved charity option
     mapping(uint256 => CharityOption) private _charityOptions;
 
-    // ─── Constructor ─────────────────────────────────────────────────────────
-
-    /// @param _shieldFactory Address of the ShieldFactory contract (immutable after deploy)
-    constructor(address _shieldFactory) {
-        shieldFactory = _shieldFactory;
-        owner = msg.sender;
+    constructor() {
+        _disableInitializers();
     }
 
-    // ─── Governance ───────────────────────────────────────────────────────────
+    function initialize(address initialOwner, address initialShieldFactory) external initializer {
+        if (initialOwner == address(0)) revert ZeroOwner();
+        owner = initialOwner;
+        shieldFactory = initialShieldFactory;
+        emit OwnershipTransferred(address(0), initialOwner);
+        emit ShieldFactoryUpdated(address(0), initialShieldFactory);
+    }
 
-    /// @inheritdoc IRegistry
+    function setShieldFactory(address newShieldFactory) external {
+        if (msg.sender != owner) revert NotOwner();
+        if (newShieldFactory == address(0)) revert InvalidShieldContract();
+        address previous = shieldFactory;
+        shieldFactory = newShieldFactory;
+        emit ShieldFactoryUpdated(previous, newShieldFactory);
+    }
+
     function transferOwnership(address newOwner) external override {
         if (msg.sender != owner) revert NotOwner();
         if (newOwner == address(0)) revert ZeroOwner();
@@ -152,7 +129,6 @@ contract Registry is IRegistry {
         owner = newOwner;
     }
 
-    /// @inheritdoc IRegistry
     function addApprover(address approver) external override {
         if (msg.sender != owner) revert NotOwner();
         if (approver == address(0)) revert InvalidApproverAddress();
@@ -160,7 +136,6 @@ contract Registry is IRegistry {
         emit ApproverAdded(approver);
     }
 
-    /// @inheritdoc IRegistry
     function removeApprover(address approver) external override {
         if (msg.sender != owner) revert NotOwner();
         if (approver == address(0)) revert InvalidApproverAddress();
@@ -168,7 +143,6 @@ contract Registry is IRegistry {
         emit ApproverRemoved(approver);
     }
 
-    /// @inheritdoc IRegistry
     function addCharityManager(address manager) external override {
         if (msg.sender != owner) revert NotOwner();
         if (manager == address(0)) revert InvalidCharityManagerAddress();
@@ -176,7 +150,6 @@ contract Registry is IRegistry {
         emit CharityManagerAdded(manager);
     }
 
-    /// @inheritdoc IRegistry
     function removeCharityManager(address manager) external override {
         if (msg.sender != owner) revert NotOwner();
         if (manager == address(0)) revert InvalidCharityManagerAddress();
@@ -184,7 +157,6 @@ contract Registry is IRegistry {
         emit CharityManagerRemoved(manager);
     }
 
-    /// @inheritdoc IRegistry
     function addCharityOption(
         string calldata name,
         address payoutAddress,
@@ -195,7 +167,6 @@ contract Registry is IRegistry {
         _setCharityOption(charityId, name, payoutAddress, metadataURI, true, true);
     }
 
-    /// @inheritdoc IRegistry
     function updateCharityOption(
         uint256 charityId,
         string calldata name,
@@ -208,9 +179,6 @@ contract Registry is IRegistry {
         _setCharityOption(charityId, name, payoutAddress, metadataURI, active, false);
     }
 
-    // ─── Registration ─────────────────────────────────────────────────────────
-
-    /// @inheritdoc IRegistry
     function register(string calldata name, VerificationLib.Proof[] calldata proofs) external override {
         if (!StringUtils.isValidName(name)) revert InvalidProjectName();
 
@@ -219,11 +187,8 @@ contract Registry is IRegistry {
         if (_pendingProjects[key].exists) revert RegistrationPending(key);
 
         string memory normalized = StringUtils.normalize(name);
-
-        // Validate proofs - ecrecover for DEPLOYER_SIG happens immediately
         bytes32[] memory proofHashes = VerificationLib.validateProofs(msg.sender, normalized, proofs);
 
-        // Store as pending - awaiting approver review
         PendingProject storage pending = _pendingProjects[key];
         pending.founder = msg.sender;
         pending.submittedAt = block.timestamp;
@@ -235,7 +200,6 @@ contract Registry is IRegistry {
         emit RegistrationSubmitted(key, normalized, msg.sender, block.timestamp);
     }
 
-    /// @inheritdoc IRegistry
     function approveRegistration(string calldata name) external override {
         if (msg.sender != owner && !isApprover[msg.sender]) revert NotApprover();
 
@@ -247,7 +211,6 @@ contract Registry is IRegistry {
         string memory normalized = StringUtils.normalize(name);
         uint256 deadline = block.timestamp + CHALLENGE_WINDOW;
 
-        // Move proof hashes to the active project
         Project storage project = _projects[key];
         project.founder = pendingFounder;
         project.registeredAt = block.timestamp;
@@ -257,14 +220,12 @@ contract Registry is IRegistry {
             project.verificationProofs.push(pending.proofHashes[i]);
         }
 
-        // Clear pending slot
         delete _pendingProjects[key];
 
         emit RegistrationApproved(key, normalized, msg.sender);
         emit ProjectRegistered(key, normalized, pendingFounder, deadline);
     }
 
-    /// @inheritdoc IRegistry
     function rejectRegistration(string calldata name, string calldata reason) external override {
         if (msg.sender != owner && !isApprover[msg.sender]) revert NotApprover();
 
@@ -277,7 +238,6 @@ contract Registry is IRegistry {
         emit RegistrationRejected(key, normalized, msg.sender, reason);
     }
 
-    /// @inheritdoc IRegistry
     function linkShield(string calldata name, address shieldContract) external override {
         if (msg.sender != shieldFactory) revert OnlyShieldFactory();
         if (shieldContract == address(0)) revert InvalidShieldContract();
@@ -288,13 +248,9 @@ contract Registry is IRegistry {
         if (project.shieldContract != address(0)) revert ShieldAlreadyLinked();
 
         project.shieldContract = shieldContract;
-
         emit ShieldLinked(key, shieldContract);
     }
 
-    // ─── Token Authorization ──────────────────────────────────────────────────
-
-    /// @inheritdoc IRegistry
     function authorizeToken(string calldata name, address tokenContract) external override {
         if (tokenContract == address(0)) revert InvalidTokenContract();
         bytes32 key = StringUtils.nameHash(name);
@@ -304,11 +260,9 @@ contract Registry is IRegistry {
         if (_authorizedTokens[key][tokenContract]) revert TokenAlreadyAuthorized(tokenContract);
 
         _authorizedTokens[key][tokenContract] = true;
-
         emit TokenAuthorized(key, tokenContract, msg.sender);
     }
 
-    /// @inheritdoc IRegistry
     function revokeToken(string calldata name, address tokenContract) external override {
         if (tokenContract == address(0)) revert InvalidTokenContract();
         bytes32 key = StringUtils.nameHash(name);
@@ -318,13 +272,9 @@ contract Registry is IRegistry {
         if (!_authorizedTokens[key][tokenContract]) revert TokenNotAuthorized(tokenContract);
 
         _authorizedTokens[key][tokenContract] = false;
-
         emit TokenRevoked(key, tokenContract, msg.sender);
     }
 
-    // ─── Address Management ───────────────────────────────────────────────────
-
-    /// @inheritdoc IRegistry
     function addAddress(string calldata name, address additionalAddress) external override {
         if (additionalAddress == address(0)) revert InvalidAdditionalAddress();
         bytes32 key = StringUtils.nameHash(name);
@@ -333,13 +283,9 @@ contract Registry is IRegistry {
         if (project.founder != msg.sender) revert NotFounder(msg.sender, project.founder);
 
         project.additionalAddresses.push(additionalAddress);
-
         emit AddressAdded(key, additionalAddress);
     }
 
-    // ─── Reporting ────────────────────────────────────────────────────────────
-
-    /// @inheritdoc IRegistry
     function reportUnauthorizedToken(string calldata name, address tokenContract) external override {
         if (tokenContract == address(0)) revert InvalidTokenContract();
         bytes32 key = StringUtils.nameHash(name);
@@ -351,16 +297,12 @@ contract Registry is IRegistry {
         }
 
         _unauthorizedReports[key][tokenContract][msg.sender] = true;
-
-        // Increment reporter score
         reporterScore[msg.sender]++;
 
         string memory normalized = StringUtils.normalize(name);
         emit UnauthorizedTokenReported(key, normalized, tokenContract, msg.sender);
 
-        // Forward to Shield contract if linked
         if (project.shieldContract != address(0)) {
-            // Shield.onUnauthorizedTokenReported - non-reverting call
             (bool success,) = project.shieldContract.call(
                 abi.encodeWithSignature(
                     "onUnauthorizedTokenReported(address,address)",
@@ -368,14 +310,10 @@ contract Registry is IRegistry {
                     msg.sender
                 )
             );
-            // Ignore failure - reporting is still valid even if Shield call fails
-            (success); // silence unused var warning
+            (success);
         }
     }
 
-    // ─── Dispute Mechanism ────────────────────────────────────────────────────
-
-    /// @inheritdoc IRegistry
     function disputeRegistration(
         string calldata name,
         string calldata reason,
@@ -387,20 +325,11 @@ contract Registry is IRegistry {
         if (block.timestamp > project.challengeDeadline) revert ChallengeWindowClosed();
 
         string memory normalized = StringUtils.normalize(name);
-
-        // Challenger must provide at least 2 valid proofs
         bytes32[] memory newProofHashes = VerificationLib.validateProofs(msg.sender, normalized, proofs);
-
         emit DisputeRaised(key, msg.sender, reason);
-
-        // Disputes are intentionally review-first. The challenge window exists to force
-        // public evidence into the open, not to auto-transfer founder rights on a naive
-        // proof-count comparison. Human review must resolve the dispute offchain or in a
-        // future governance flow.
         (newProofHashes);
     }
 
-    /// @inheritdoc IRegistry
     function submitExternalClaim(
         string calldata name,
         string calldata ecosystem,
@@ -437,7 +366,6 @@ contract Registry is IRegistry {
         );
     }
 
-    /// @inheritdoc IRegistry
     function reviewExternalClaim(
         uint256 claimId,
         bool approved,
@@ -474,7 +402,6 @@ contract Registry is IRegistry {
         );
     }
 
-    /// @inheritdoc IRegistry
     function authorizeExternalAsset(
         string calldata name,
         string calldata ecosystem,
@@ -510,7 +437,6 @@ contract Registry is IRegistry {
         );
     }
 
-    /// @inheritdoc IRegistry
     function revokeExternalAsset(
         string calldata name,
         string calldata ecosystem,
@@ -542,9 +468,6 @@ contract Registry is IRegistry {
         );
     }
 
-    // ─── View Functions ────────────────────────────────────────────────────────
-
-    /// @inheritdoc IRegistry
     function isAuthorized(string calldata name, address tokenContract)
         external
         view
@@ -556,7 +479,6 @@ contract Registry is IRegistry {
         return _authorizedTokens[key][tokenContract];
     }
 
-    /// @inheritdoc IRegistry
     function getProjectInfo(string calldata name)
         external
         view
@@ -576,7 +498,6 @@ contract Registry is IRegistry {
         });
     }
 
-    /// @inheritdoc IRegistry
     function getPendingInfo(string calldata name)
         external
         view
@@ -593,23 +514,19 @@ contract Registry is IRegistry {
         });
     }
 
-    /// @inheritdoc IRegistry
     function getFounder(string calldata name) external view override returns (address) {
         bytes32 key = StringUtils.nameHash(name);
         return _projects[key].founder;
     }
 
-    /// @inheritdoc IRegistry
     function isRegistered(string calldata name) external view override returns (bool) {
         return _projects[StringUtils.nameHash(name)].exists;
     }
 
-    /// @inheritdoc IRegistry
     function isPending(string calldata name) external view override returns (bool) {
         return _pendingProjects[StringUtils.nameHash(name)].exists;
     }
 
-    /// @inheritdoc IRegistry
     function getExternalClaim(uint256 claimId)
         external
         view
@@ -637,7 +554,6 @@ contract Registry is IRegistry {
         });
     }
 
-    /// @inheritdoc IRegistry
     function getExternalAsset(
         string calldata name,
         string calldata ecosystem,
@@ -666,7 +582,6 @@ contract Registry is IRegistry {
         });
     }
 
-    /// @inheritdoc IRegistry
     function getCharityOption(uint256 charityId) external view override returns (CharityOptionView memory) {
         CharityOption storage option = _charityOptions[charityId];
         return CharityOptionView({
@@ -681,10 +596,6 @@ contract Registry is IRegistry {
         });
     }
 
-    /// @notice Check if a token is authorized by raw name hash (gas-optimized for integrations)
-    /// @param nameHash_ keccak256 of the normalized project name
-    /// @param tokenContract Token contract address
-    /// @return True if authorized
     function isAuthorizedByHash(bytes32 nameHash_, address tokenContract)
         external
         view
