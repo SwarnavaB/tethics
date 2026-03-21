@@ -7,10 +7,10 @@
     "tethics-watcher": "dist/index.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "npm exec tsc",
     "dev": "ts-node src/index.ts",
     "start": "node dist/index.js",
-    "watch": "tsc --watch"
+    "watch": "npm exec tsc -- --watch"
   },
   "dependencies": {
     "viem": "^2.0.0",
