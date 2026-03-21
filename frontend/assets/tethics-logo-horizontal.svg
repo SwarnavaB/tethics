@@ -1,0 +1,56 @@
+<svg width="920" height="240" viewBox="0 0 920 240" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">TETHICS horizontal logo</title>
+  <desc id="desc">TETHICS horizontal logo with shield governance mark and wordmark.</desc>
+  <defs>
+    <linearGradient id="shieldFill" x1="42" y1="28" x2="210" y2="228" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#173740"/>
+      <stop offset="0.52" stop-color="#0F6C75"/>
+      <stop offset="1" stop-color="#0B5961"/>
+    </linearGradient>
+    <linearGradient id="coreFill" x1="86" y1="68" x2="168" y2="188" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFF8ED"/>
+      <stop offset="1" stop-color="#E9DCC6"/>
+    </linearGradient>
+    <filter id="shadow" x="20" y="18" width="216" height="224" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="10"/>
+      <feGaussianBlur stdDeviation="10"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.0784314 0 0 0 0 0.133333 0 0 0 0 0.152941 0 0 0 0.18 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_1"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_1" result="shape"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#shadow)">
+    <path d="M128 28L197 54.5V115.5C197 166.955 167.443 212.023 128 230C88.5566 212.023 59 166.955 59 115.5V54.5L128 28Z" fill="url(#shieldFill)"/>
+    <path d="M128 41L186.5 63.5V115.154C186.5 159.248 161.312 199.303 128 215.897C94.6878 199.303 69.5 159.248 69.5 115.154V63.5L128 41Z" stroke="#A7D2CD" stroke-opacity="0.28" stroke-width="5"/>
+    <path d="M98 76C98 70.4772 102.477 66 108 66H148C153.523 66 158 70.4772 158 76V82H171C176.523 82 181 86.4772 181 92V103C181 108.523 176.523 113 171 113H158V176C158 181.523 153.523 186 148 186H108C102.477 186 98 181.523 98 176V113H85C79.4772 113 75 108.523 75 103V92C75 86.4772 79.4772 82 85 82H98V76Z" fill="url(#coreFill)"/>
+    <path d="M91 138C95.9706 138 100 133.971 100 129C100 124.029 95.9706 120 91 120C86.0294 120 82 124.029 82 129C82 133.971 86.0294 138 91 138Z" fill="#EFC07B"/>
+    <path d="M165 138C169.971 138 174 133.971 174 129C174 124.029 169.971 120 165 120C160.029 120 156 124.029 156 129C156 133.971 160.029 138 165 138Z" fill="#EFC07B"/>
+    <path d="M128 203C132.971 203 137 198.971 137 194C137 189.029 132.971 185 128 185C123.029 185 119 189.029 119 194C119 198.971 123.029 203 128 203Z" fill="#EFC07B"/>
+    <path d="M91 129H114" stroke="#EFC07B" stroke-width="6" stroke-linecap="round"/>
+    <path d="M142 129H165" stroke="#EFC07B" stroke-width="6" stroke-linecap="round"/>
+    <path d="M128 155V194" stroke="#EFC07B" stroke-width="6" stroke-linecap="round"/>
+  </g>
+
+  <g fill="#142227">
+    <path d="M300.696 74.248H450.744V104.92H393.288V198H358.152V104.92H300.696V74.248Z"/>
+    <path d="M474.357 74.248H611.253V103.864H509.493V123.64H603.621V151.48H509.493V168.384H613.989V198H474.357V74.248Z"/>
+    <path d="M637.553 74.248H672.689V121.432H731.201V74.248H766.337V198H731.201V151.832H672.689V198H637.553V74.248Z"/>
+    <path d="M790.326 74.248H940.374V104.92H882.918V198H847.782V104.92H790.326V74.248Z"/>
+    <path d="M300.696 28H432.96V52.64H300.696V28Z" fill="#0F6C75"/>
+  </g>
+
+  <g fill="#5D6F78">
+    <path d="M302.104 216V206.592H306.968V216H302.104ZM311.328 216V206.592H316.192V216H311.328ZM320.552 216V206.592H325.416V216H320.552Z"/>
+    <path d="M341.968 216V186.72H352.336L366.992 205.776H367.28V186.72H378.368V216H368.288L353.344 196.656H353.056V216H341.968Z"/>
+    <path d="M395.332 216V186.72H419.428V195.312H406.42V198.144H418.132V205.776H406.42V207.408H419.716V216H395.332Z"/>
+    <path d="M435.151 216V186.72H446.239V216H435.151Z"/>
+    <path d="M462.078 216V186.72H486.174V195.6H473.166V216H462.078Z"/>
+    <path d="M500.382 216V186.72H511.47V216H500.382Z"/>
+    <path d="M527.31 216V186.72H551.694V195.312H538.398V198.144H550.11V205.776H538.398V207.408H551.982V216H527.31Z"/>
+    <path d="M568.207 216V186.72H579.295V207.12H591.391V216H568.207Z"/>
+    <path d="M607.572 216V186.72H619.74C631.692 186.72 639.036 192.336 639.036 201.36C639.036 210.384 631.692 216 619.74 216H607.572ZM618.66 207.408H619.02C624.564 207.408 627.66 205.632 627.66 201.36C627.66 197.088 624.564 195.312 619.02 195.312H618.66V207.408Z"/>
+  </g>
+</svg>

@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "att_replace_me",
+  "type": "PROJECT_APPROVAL",
+  "issuedAt": "2026-03-21T00:00:00.000Z",
+  "chain": "solana",
+  "subject": {
+    "slug": "example"
+  },
+  "payload": {
+    "displayName": "Example",
+    "founderWallets": [
+      "<FOUNDERS_SOLANA_WALLET>"
+    ],
+    "linkedEvmWallets": [],
+    "socials": {
+      "sns": "example.sol"
+    },
+    "proofIds": [
+      "proof_example_sns"
+    ]
+  },
+  "issuer": {
+    "authority": "<YOUR_TETHICS_SOL_PUBLIC_KEY>",
+    "namespace": "tethics.sol"
+  },
+  "signatures": []
+}

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TETHICS - Cross-Chain Token Governance</title>
+  <meta name="description" content="TETHICS helps founders publish official token records, run transparent reviewer governance, and disavow fake launches across Base, Solana, and Bags.fm." />
+  <meta property="og:title" content="TETHICS" />
+  <meta property="og:description" content="Cross-chain founder authorization, transparent governance, and public warning signals for launches on Base, Solana, and Bags.fm." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="assets/tethics-og-card.svg" />
+  <meta property="og:image:secure_url" content="assets/tethics-og-card.png" />
+  <link rel="icon" type="image/svg+xml" href="assets/tethics-favicon.svg" />
+  <link rel="alternate icon" type="image/png" href="assets/tethics-favicon.png" />
+  <link rel="apple-touch-icon" href="assets/tethics-app-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header>
+    <a href="#/" class="logo">
+      <span class="brand-mark" aria-hidden="true">
+        <img src="assets/tethics-logo-mark.svg" alt="" class="brand-mark-image" />
+      </span>
+      <span class="brand-copy">
+        <span class="brand-wordmark">TETHICS</span>
+        <span class="brand-tag">Cross-chain legitimacy protocol</span>
+      </span>
+    </a>
+    <nav>
+      <a href="#/">Home</a>
+      <a href="#/verify">Verify</a>
+      <a href="#/verify-solana">Verify Solana</a>
+      <a href="#/register">Register</a>
+      <a href="#/dashboard">Dashboard</a>
+      <a href="#/governance">Governance</a>
+      <a href="#/leaderboard">Leaderboard</a>
+    </nav>
+    <div class="header-right">
+      <span class="network-badge" id="network-badge">Base Sepolia</span>
+      <button class="btn btn-secondary" id="connect-btn">Connect EVM Wallet</button>
+      <button class="btn btn-secondary" id="connect-solana-btn">Connect Solana Wallet</button>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <div class="spinner"></div>
+  </main>
+
+  <footer>
+    <p>
+      TETHICS is open-source software.
+      <a href="https://github.com/SwarnavaB/tethics" target="_blank" rel="noopener">GitHub</a> ·
+      <a href="#/verify">Verify a Token</a> ·
+      <a href="#/governance">Open Governance</a>
+    </p>
+    <p style="margin-top:0.4rem">Base registry, Solana-native governance, public evidence bundles, and Bags review records. Curated first, DAO-ready over time.</p>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

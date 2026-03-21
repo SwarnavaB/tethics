@@ -1,0 +1,43 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">TETHICS app icon</title>
+  <desc id="desc">Square TETHICS app icon with shield governance mark.</desc>
+  <defs>
+    <linearGradient id="bg" x1="54" y1="38" x2="430" y2="470" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#183640"/>
+      <stop offset="0.56" stop-color="#0F6C75"/>
+      <stop offset="1" stop-color="#0B5961"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="110" y1="104" x2="389" y2="404" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFF9EE"/>
+      <stop offset="1" stop-color="#E8DBC4"/>
+    </linearGradient>
+    <filter id="shadow" x="52" y="44" width="408" height="424" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="16"/>
+      <feGaussianBlur stdDeviation="16"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.0705882 0 0 0 0 0.14902 0 0 0 0 0.172549 0 0 0 0.22 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_1"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_1" result="shape"/>
+    </filter>
+  </defs>
+
+  <rect x="20" y="20" width="472" height="472" rx="108" fill="#F7F1E8"/>
+  <rect x="32" y="32" width="448" height="448" rx="96" fill="url(#bg)"/>
+  <circle cx="102" cy="96" r="88" fill="#E7C98F" fill-opacity="0.14"/>
+  <circle cx="404" cy="118" r="108" fill="#B7E1DB" fill-opacity="0.14"/>
+
+  <g filter="url(#shadow)">
+    <path d="M256 86L382 134V248.5C382 342.523 328.008 424.868 256 457C183.992 424.868 130 342.523 130 248.5V134L256 86Z" fill="#12333C"/>
+    <path d="M256 107L364 148V247.87C364 326.862 319.319 399.185 256 429.229C192.681 399.185 148 326.862 148 247.87V148L256 107Z" stroke="#A8D4CE" stroke-opacity="0.26" stroke-width="10"/>
+
+    <path d="M201 174C201 164.611 208.611 157 218 157H294C303.389 157 311 164.611 311 174V186H336C345.389 186 353 193.611 353 203V223C353 232.389 345.389 240 336 240H311V348C311 357.389 303.389 365 294 365H218C208.611 365 201 357.389 201 348V240H176C166.611 240 159 232.389 159 223V203C159 193.611 166.611 186 176 186H201V174Z" fill="url(#panel)"/>
+
+    <circle cx="187" cy="271" r="15" fill="#EFC07B"/>
+    <circle cx="325" cy="271" r="15" fill="#EFC07B"/>
+    <circle cx="256" cy="381" r="15" fill="#EFC07B"/>
+    <path d="M187 271H219" stroke="#EFC07B" stroke-width="10" stroke-linecap="round"/>
+    <path d="M293 271H325" stroke="#EFC07B" stroke-width="10" stroke-linecap="round"/>
+    <path d="M256 320V381" stroke="#EFC07B" stroke-width="10" stroke-linecap="round"/>
+  </g>
+</svg>

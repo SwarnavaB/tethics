@@ -1,0 +1,35 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">TETHICS social card</title>
+  <desc id="desc">TETHICS branded social card for link previews.</desc>
+  <defs>
+    <linearGradient id="bg" x1="96" y1="72" x2="1102" y2="590" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FCFBF8"/>
+      <stop offset="0.52" stop-color="#F2ECE3"/>
+      <stop offset="1" stop-color="#E7DAC7"/>
+    </linearGradient>
+    <linearGradient id="orbA" x1="833" y1="69" x2="1047" y2="263" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A7D2CD"/>
+      <stop offset="1" stop-color="#0F6C75" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="orbB" x1="81" y1="9" x2="303" y2="216" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#EFC07B"/>
+      <stop offset="1" stop-color="#9F651B" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" rx="36" fill="url(#bg)"/>
+  <circle cx="936" cy="152" r="154" fill="url(#orbA)"/>
+  <circle cx="158" cy="74" r="132" fill="url(#orbB)"/>
+  <rect x="74" y="74" width="1052" height="482" rx="28" fill="white" fill-opacity="0.46" stroke="#D8C9B4"/>
+  <image href="tethics-logo-horizontal.svg" x="112" y="128" width="720" height="188"/>
+  <text x="116" y="378" fill="#142227" font-family="IBM Plex Sans, Arial, sans-serif" font-size="44" font-weight="700" letter-spacing="-1.2">
+    Cross-chain token legitimacy and transparent governance
+  </text>
+  <text x="116" y="434" fill="#5D6F78" font-family="Inter, Arial, sans-serif" font-size="28">
+    Base registry. Solana-native governance. Public review evidence.
+  </text>
+  <text x="116" y="476" fill="#5D6F78" font-family="Inter, Arial, sans-serif" font-size="28">
+    Founder approvals today, DAO-ready delegation over time.
+  </text>
+  <rect x="116" y="506" width="252" height="44" rx="22" fill="#142227"/>
+  <text x="142" y="535" fill="#F7F0E5" font-family="JetBrains Mono, monospace" font-size="20">tethics.eth / tethics.sol</text>
+</svg>

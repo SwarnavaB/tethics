@@ -23,6 +23,64 @@ export const CHAINS = {
 // Default to Base Sepolia until mainnet deployment
 export const DEFAULT_CHAIN = CHAINS.BASE_SEPOLIA;
 
+export const SOLANA_CHAINS = {
+  SOLANA_MAINNET: {
+    id: 'solana-mainnet',
+    name: 'Solana',
+    rpcUrl: 'https://api.mainnet-beta.solana.com',
+    explorer: 'https://explorer.solana.com',
+    programId: 'TBD',
+  },
+  SOLANA_DEVNET: {
+    id: 'solana-devnet',
+    name: 'Solana Devnet',
+    rpcUrl: 'https://api.devnet.solana.com',
+    explorer: 'https://explorer.solana.com/?cluster=devnet',
+    programId: 'TBD',
+  },
+};
+
+export const DEFAULT_SOLANA_CHAIN = SOLANA_CHAINS.SOLANA_DEVNET;
+
+export function isChainConfigured(chain = DEFAULT_CHAIN) {
+  return Boolean(
+    chain
+    && chain.registry
+    && chain.registry !== 'TBD'
+    && chain.shieldFactory
+    && chain.shieldFactory !== 'TBD'
+  );
+}
+
+export function getChainDeploymentStatus(chain = DEFAULT_CHAIN) {
+  return {
+    chainName: chain?.name || 'Unknown',
+    configured: isChainConfigured(chain),
+    missing: [
+      !chain?.registry || chain.registry === 'TBD' ? 'registry' : null,
+      !chain?.shieldFactory || chain.shieldFactory === 'TBD' ? 'shieldFactory' : null,
+    ].filter(Boolean),
+  };
+}
+
+export function isSolanaChainConfigured(chain = DEFAULT_SOLANA_CHAIN) {
+  return Boolean(
+    chain
+    && chain.programId
+    && chain.programId !== 'TBD'
+  );
+}
+
+export function getSolanaDeploymentStatus(chain = DEFAULT_SOLANA_CHAIN) {
+  return {
+    chainName: chain?.name || 'Unknown',
+    configured: isSolanaChainConfigured(chain),
+    missing: [
+      !chain?.programId || chain.programId === 'TBD' ? 'programId' : null,
+    ].filter(Boolean),
+  };
+}
+
 export const PROOF_TYPES = {
   DEPLOYER_SIG: 1,
   ENS: 2,
@@ -59,6 +117,42 @@ export const CHARITY_OPTIONS = [
     url: 'https://protocol-guild.readthedocs.io',
   },
 ];
+
+export const ECOSYSTEMS = {
+  EVM: 'EVM',
+  SOLANA: 'SOLANA',
+};
+
+export const VERIFICATION_STATUSES = {
+  AUTHORIZED: 'AUTHORIZED',
+  UNAUTHORIZED: 'UNAUTHORIZED',
+  UNKNOWN: 'UNKNOWN',
+  PENDING_REVIEW: 'PENDING_REVIEW',
+  REVOKED: 'REVOKED',
+};
+
+export const STATUS_BADGES = {
+  [VERIFICATION_STATUSES.AUTHORIZED]: {
+    label: 'AUTHORIZED',
+    className: 'badge-verified',
+  },
+  [VERIFICATION_STATUSES.UNAUTHORIZED]: {
+    label: 'UNAUTHORIZED',
+    className: 'badge-unverified',
+  },
+  [VERIFICATION_STATUSES.UNKNOWN]: {
+    label: 'UNKNOWN',
+    className: 'badge-warning',
+  },
+  [VERIFICATION_STATUSES.PENDING_REVIEW]: {
+    label: 'PENDING REVIEW',
+    className: 'badge-pending',
+  },
+  [VERIFICATION_STATUSES.REVOKED]: {
+    label: 'REVOKED',
+    className: 'badge-warning',
+  },
+};
 
 export const REGISTRY_ABI = [{"type":"constructor","inputs":[{"name":"_shieldFactory","type":"address","internalType":"address"}],"stateMutability":"nonpayable"},{"type":"function","name":"CHALLENGE_WINDOW","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"addAddress","inputs":[{"name":"name","type":"string","internalType":"string"},{"name":"additionalAddress","type":"address","internalType":"address"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"authorizeToken","inputs":[{"name":"name","type":"string","internalType":"string"},{"name":"tokenContract","type":"address","internalType":"address"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"disputeRegistration","inputs":[{"name":"name","type":"string","internalType":"string"},{"name":"reason","type":"string","internalType":"string"},{"name":"proofs","type":"tuple[]","internalType":"struct VerificationLib.Proof[]","components":[{"name":"proofType","type":"uint8","internalType":"uint8"},{"name":"data","type":"bytes","internalType":"bytes"}]}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"getFounder","inputs":[{"name":"name","type":"string","internalType":"string"}],"outputs":[{"name":"","type":"address","internalType":"address"}],"stateMutability":"view"},{"type":"function","name":"getProjectInfo","inputs":[{"name":"name","type":"string","internalType":"string"}],"outputs":[{"name":"","type":"tuple","internalType":"struct IRegistry.ProjectView","components":[{"name":"founder","type":"address","internalType":"address"},{"name":"additionalAddresses","type":"address[]","internalType":"address[]"},{"name":"shieldContract","type":"address","internalType":"address"},{"name":"verificationProofs","type":"bytes32[]","internalType":"bytes32[]"},{"name":"registeredAt","type":"uint256","internalType":"uint256"},{"name":"challengeDeadline","type":"uint256","internalType":"uint256"},{"name":"exists","type":"bool","internalType":"bool"}]}],"stateMutability":"view"},{"type":"function","name":"isAuthorized","inputs":[{"name":"name","type":"string","internalType":"string"},{"name":"tokenContract","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},{"type":"function","name":"isAuthorizedByHash","inputs":[{"name":"nameHash_","type":"bytes32","internalType":"bytes32"},{"name":"tokenContract","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},{"type":"function","name":"isRegistered","inputs":[{"name":"name","type":"string","internalType":"string"}],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},{"type":"function","name":"linkShield","inputs":[{"name":"name","type":"string","internalType":"string"},{"name":"shieldContract","type":"address","internalType":"address"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"register","inputs":[{"name":"name","type":"string","internalType":"string"},{"name":"proofs","type":"tuple[]","internalType":"struct VerificationLib.Proof[]","components":[{"name":"proofType","type":"uint8","internalType":"uint8"},{"name":"data","type":"bytes","internalType":"bytes"}]}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"reportUnauthorizedToken","inputs":[{"name":"name","type":"string","internalType":"string"},{"name":"tokenContract","type":"address","internalType":"address"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"reporterScore","inputs":[{"name":"","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"revokeToken","inputs":[{"name":"name","type":"string","internalType":"string"},{"name":"tokenContract","type":"address","internalType":"address"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"shieldFactory","inputs":[],"outputs":[{"name":"","type":"address","internalType":"address"}],"stateMutability":"view"},{"type":"event","name":"AddressAdded","inputs":[{"name":"nameHash","type":"bytes32","indexed":true,"internalType":"bytes32"},{"name":"addedAddress","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"event","name":"DisputeRaised","inputs":[{"name":"nameHash","type":"bytes32","indexed":true,"internalType":"bytes32"},{"name":"challenger","type":"address","indexed":true,"internalType":"address"},{"name":"reason","type":"string","indexed":false,"internalType":"string"}],"anonymous":false},{"type":"event","name":"DisputeResolved","inputs":[{"name":"nameHash","type":"bytes32","indexed":true,"internalType":"bytes32"},{"name":"newFounder","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"event","name":"ProjectRegistered","inputs":[{"name":"nameHash","type":"bytes32","indexed":true,"internalType":"bytes32"},{"name":"name","type":"string","indexed":false,"internalType":"string"},{"name":"founder","type":"address","indexed":true,"internalType":"address"},{"name":"challengeDeadline","type":"uint256","indexed":false,"internalType":"uint256"}],"anonymous":false},{"type":"event","name":"ShieldLinked","inputs":[{"name":"nameHash","type":"bytes32","indexed":true,"internalType":"bytes32"},{"name":"shieldContract","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"event","name":"TokenAuthorized","inputs":[{"name":"nameHash","type":"bytes32","indexed":true,"internalType":"bytes32"},{"name":"tokenContract","type":"address","indexed":true,"internalType":"address"},{"name":"founder","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"event","name":"TokenRevoked","inputs":[{"name":"nameHash","type":"bytes32","indexed":true,"internalType":"bytes32"},{"name":"tokenContract","type":"address","indexed":true,"internalType":"address"},{"name":"founder","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"event","name":"UnauthorizedTokenReported","inputs":[{"name":"nameHash","type":"bytes32","indexed":true,"internalType":"bytes32"},{"name":"name","type":"string","indexed":false,"internalType":"string"},{"name":"tokenContract","type":"address","indexed":true,"internalType":"address"},{"name":"reporter","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"error","name":"ChallengeWindowClosed","inputs":[]},{"type":"error","name":"ChallengeWindowOpen","inputs":[]},{"type":"error","name":"DuplicateProofCategory","inputs":[]},{"type":"error","name":"InsufficientProofs","inputs":[]},{"type":"error","name":"InvalidProjectName","inputs":[]},{"type":"error","name":"InvalidProofType","inputs":[{"name":"proofType","type":"uint8","internalType":"uint8"}]},{"type":"error","name":"InvalidSignature","inputs":[]},{"type":"error","name":"NotFounder","inputs":[{"name":"caller","type":"address","internalType":"address"},{"name":"founder","type":"address","internalType":"address"}]},{"type":"error","name":"OnlyShieldFactory","inputs":[]},{"type":"error","name":"ProjectAlreadyExists","inputs":[{"name":"nameHash","type":"bytes32","internalType":"bytes32"}]},{"type":"error","name":"ProjectNotFound","inputs":[{"name":"nameHash","type":"bytes32","internalType":"bytes32"}]},{"type":"error","name":"ShieldAlreadyLinked","inputs":[]},{"type":"error","name":"SignerMismatch","inputs":[{"name":"expected","type":"address","internalType":"address"},{"name":"recovered","type":"address","internalType":"address"}]},{"type":"error","name":"TokenAlreadyAuthorized","inputs":[{"name":"tokenContract","type":"address","internalType":"address"}]},{"type":"error","name":"TokenIsAuthorized","inputs":[{"name":"tokenContract","type":"address","internalType":"address"}]},{"type":"error","name":"TokenNotAuthorized","inputs":[{"name":"tokenContract","type":"address","internalType":"address"}]},{"type":"function","name":"owner","inputs":[],"outputs":[{"name":"","type":"address","internalType":"address"}],"stateMutability":"view"},{"type":"function","name":"isApprover","inputs":[{"name":"","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},{"type":"function","name":"transferOwnership","inputs":[{"name":"newOwner","type":"address","internalType":"address"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"addApprover","inputs":[{"name":"approver","type":"address","internalType":"address"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"removeApprover","inputs":[{"name":"approver","type":"address","internalType":"address"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"approveRegistration","inputs":[{"name":"name","type":"string","internalType":"string"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"rejectRegistration","inputs":[{"name":"name","type":"string","internalType":"string"},{"name":"reason","type":"string","internalType":"string"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"isPending","inputs":[{"name":"name","type":"string","internalType":"string"}],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},{"type":"function","name":"getPendingInfo","inputs":[{"name":"name","type":"string","internalType":"string"}],"outputs":[{"name":"","type":"tuple","internalType":"struct IRegistry.PendingProjectView","components":[{"name":"founder","type":"address","internalType":"address"},{"name":"proofHashes","type":"bytes32[]","internalType":"bytes32[]"},{"name":"submittedAt","type":"uint256","internalType":"uint256"},{"name":"exists","type":"bool","internalType":"bool"}]}],"stateMutability":"view"},{"type":"event","name":"OwnershipTransferred","inputs":[{"name":"previousOwner","type":"address","indexed":true,"internalType":"address"},{"name":"newOwner","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"event","name":"ApproverAdded","inputs":[{"name":"approver","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"event","name":"ApproverRemoved","inputs":[{"name":"approver","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"event","name":"RegistrationSubmitted","inputs":[{"name":"nameHash","type":"bytes32","indexed":true,"internalType":"bytes32"},{"name":"name","type":"string","indexed":false,"internalType":"string"},{"name":"founder","type":"address","indexed":true,"internalType":"address"},{"name":"submittedAt","type":"uint256","indexed":false,"internalType":"uint256"}],"anonymous":false},{"type":"event","name":"RegistrationApproved","inputs":[{"name":"nameHash","type":"bytes32","indexed":true,"internalType":"bytes32"},{"name":"name","type":"string","indexed":false,"internalType":"string"},{"name":"approver","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"event","name":"RegistrationRejected","inputs":[{"name":"nameHash","type":"bytes32","indexed":true,"internalType":"bytes32"},{"name":"name","type":"string","indexed":false,"internalType":"string"},{"name":"approver","type":"address","indexed":true,"internalType":"address"},{"name":"reason","type":"string","indexed":false,"internalType":"string"}],"anonymous":false},{"type":"error","name":"NotOwner","inputs":[]},{"type":"error","name":"NotApprover","inputs":[]},{"type":"error","name":"RegistrationPending","inputs":[{"name":"nameHash","type":"bytes32","internalType":"bytes32"}]},{"type":"error","name":"NoPendingRegistration","inputs":[{"name":"nameHash","type":"bytes32","internalType":"bytes32"}]}];
 

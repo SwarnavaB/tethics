@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "projects": [
+    {
+      "id": "project_tethics",
+      "slug": "tethics",
+      "displayName": "tethics",
+      "description": "Cross-chain token authorization and disavowal network.",
+      "website": "https://tethics.eth",
+      "socials": {
+        "ens": "tethics.eth",
+        "sns": "tethics.sol",
+        "github": "SwarnavaB/tethics"
+      },
+      "status": "APPROVED",
+      "createdAt": "2026-03-21T00:00:00.000Z",
+      "updatedAt": "2026-03-21T00:00:00.000Z",
+      "approvedAt": "2026-03-21T00:00:00.000Z",
+      "approvedBy": [
+        {
+          "id": "curator_tethics",
+          "label": "tethics.eth / tethics.sol curator"
+        }
+      ],
+      "founderIdentities": [
+        {
+          "id": "founder_identity_tethics_solana",
+          "ecosystem": "SOLANA",
+          "chain": "solana",
+          "address": "11111111111111111111111111111111",
+          "label": "bootstrap placeholder signer",
+          "isPrimary": true,
+          "proofIds": [
+            "proof_tethics_sns"
+          ]
+        }
+      ],
+      "proofs": [
+        {
+          "id": "proof_tethics_sns",
+          "projectId": "project_tethics",
+          "type": "SNS",
+          "ecosystem": "SOLANA",
+          "chain": "solana",
+          "submittedBy": "curator_tethics",
+          "submittedAt": "2026-03-21T00:00:00.000Z",
+          "status": "VERIFIED",
+          "verifiedAt": "2026-03-21T00:00:00.000Z",
+          "verifiedBy": "curator_tethics",
+          "payload": {
+            "type": "SNS",
+            "name": "tethics.sol"
+          },
+          "anchors": [
+            {
+              "kind": "ACCOUNT",
+              "value": "tethics.sol",
+              "chain": "solana"
+            }
+          ]
+        }
+      ],
+      "chainProfiles": [
+        {
+          "id": "chain_profile_tethics_solana",
+          "projectId": "project_tethics",
+          "ecosystem": "SOLANA",
+          "chain": "solana",
+          "status": "APPROVED",
+          "launchWallets": [
+            {
+              "id": "launch_wallet_tethics_bags",
+              "address": "11111111111111111111111111111111",
+              "ecosystem": "SOLANA",
+              "chain": "solana",
+              "label": "bootstrap Bags launch wallet placeholder",
+              "status": "AUTHORIZED"
+            }
+          ],
+          "authorizedAssets": [],
+          "venueProfiles": [
+            {
+              "id": "venue_profile_tethics_bags",
+              "venue": "BAGS",
+              "ecosystem": "SOLANA",
+              "chain": "solana",
+              "status": "AUTHORIZED",
+              "handles": [
+                "tethics"
+              ],
+              "creatorWallets": [
+                "11111111111111111111111111111111"
+              ],
+              "metadata": {
+                "note": "Bootstrap placeholder profile. Replace with real creator wallet before production."
+              }
+            }
+          ]
+        }
+      ],
+      "policy": {
+        "autoAuthorizeLaunchWalletMints": false,
+        "requireManualReviewForVenueMismatch": true,
+        "allowedVenues": [
+          "BAGS"
+        ]
+      },
+      "tags": [
+        "bootstrap"
+      ]
+    }
+  ]
+}
