@@ -12,6 +12,12 @@ contracts/.env
 watcher/node_modules/
 watcher/dist/
 watcher/.env
+shared/dist/
+solana/dist/
+solana/target/
+solana/.anchor/
+watchers/**/dist/
+node_modules/
 
 # Environment files
 .env
@@ -21,6 +27,9 @@ watcher/.env
 # macOS
 .DS_Store
 **/.DS_Store
+
+# Local tooling
+.claude/
 
 # Editor
 .vscode/
