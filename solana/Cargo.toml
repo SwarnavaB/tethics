@@ -1,0 +1,5 @@
+[workspace]
+members = [
+  "programs/tethics_registry"
+]
+resolver = "2"

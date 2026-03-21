@@ -1,0 +1,17 @@
+{
+  "name": "tethics",
+  "private": true,
+  "workspaces": [
+    "shared",
+    "solana",
+    "watcher",
+    "watchers/solana/bags"
+  ],
+  "scripts": {
+    "build:shared": "npm --workspace @tethics/shared run build",
+    "build:solana": "npm --workspace @tethics/solana run build",
+    "build:bags": "npm --workspace @tethics/watcher-bags run build",
+    "build:watcher": "npm --workspace tethics-watcher run build",
+    "build:ts": "npm run build:shared && npm run build:solana && npm run build:bags && npm run build:watcher"
+  }
+}
