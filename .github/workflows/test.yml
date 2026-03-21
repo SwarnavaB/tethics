@@ -52,3 +52,30 @@ jobs:
 
       - name: Build TypeScript
         run: npm run build:watcher
+
+  crosschain:
+    name: Cross-Chain Tooling Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build workspace TypeScript packages
+        run: npm run build:ts
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Check Solana program
+        working-directory: solana
+        run: cargo check -p tethics_registry

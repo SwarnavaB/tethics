@@ -9,9 +9,9 @@
   },
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node ../node_modules/typescript/bin/tsc -p tsconfig.json",
     "start": "node dist/cli.js",
-    "watch": "tsc -p tsconfig.json --watch"
+    "watch": "node ../node_modules/typescript/bin/tsc -p tsconfig.json --watch"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

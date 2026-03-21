@@ -6,8 +6,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "watch": "tsc -p tsconfig.json --watch"
+    "build": "node ../node_modules/typescript/bin/tsc -p tsconfig.json",
+    "watch": "node ../node_modules/typescript/bin/tsc -p tsconfig.json --watch"
   },
   "devDependencies": {
     "typescript": "^5.4.0"
