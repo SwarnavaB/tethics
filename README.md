@@ -1,6 +1,6 @@
-# tethics
+# TETHICS
 
-**Open-source, fully onchain, zero-infrastructure protection for builders against unauthorized token launches.**
+**Open-source, fully onchain, zero-infrastructure protection for builders against unauthorized token launches across EVM and Solana.**
 
 [![Tests](https://github.com/SwarnavaB/tethics/actions/workflows/test.yml/badge.svg)](https://github.com/SwarnavaB/tethics/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -13,13 +13,23 @@ On permissionless chains, anyone can deploy a token using a legitimate project's
 
 ## The Solution
 
-tethics is a public utility that:
+TETHICS is a public utility that:
 
 1. **Lets founders cryptographically prove their identity** and disavow unauthorized tokens
 2. **Automatically destroys the economic upside** of unauthorized tokens (routes funds to charity)
 3. **Notifies token buyers** that their token is not authorized
 4. **Makes verification queryable** by any wallet, frontend, or block explorer
-5. **Requires zero ongoing effort** from founders after initial registration
+5. **Supports chain-native governance across EVM and Solana**
+6. **Requires zero backend infrastructure** beyond public chains and static assets
+
+## Ecosystem Scope
+
+TETHICS is designed for projects that may be impersonated across multiple ecosystems.
+
+- **EVM:** onchain registry, project approvals, token authorization, charity-governed Shield flows
+- **Solana:** native Solana governance path, project proposals, asset records, and reviewer delegation
+- **Bags.fm:** first-class Solana venue support for creator-wallet and mint review
+- **Cross-ecosystem projects:** one project can track official and unwanted assets across both EVM and Solana
 
 ## Hard Constraints
 
@@ -35,32 +45,26 @@ tethics is a public utility that:
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Layer 1: Registry (deployed once, lives forever)       │
-│  • Founder registration with multi-signal proofs        │
-│  • Token authorization / revocation                     │
-│  • Permissionless reporting + reporter reputation       │
-└───────────────────────┬─────────────────────────────────┘
-                        │
-┌───────────────────────▼─────────────────────────────────┐
-│  Layer 2: Shield (one per founder, via ShieldFactory)   │
-│  • Charity drain: token → DEX swap → charity            │
-│  • Attestation beacon (rich events for indexing)        │
-│  • Buyer notification (rate-limited, permissionless)    │
-└───────────────────────┬─────────────────────────────────┘
-                        │
-┌───────────────────────▼─────────────────────────────────┐
-│  Layer 3: Static Frontend (IPFS + ENS)                  │
-│  • Search, Register, Dashboard, Verify, Leaderboard     │
-│  • No build step, no backend, deployable anywhere       │
-└───────────────────────┬─────────────────────────────────┘
-                        │
-┌───────────────────────▼─────────────────────────────────┐
-│  Layer 4: Watcher (community-run CLI)                   │
-│  • Monitors token factory events on Base                │
-│  • Auto-reports matches to Registry                     │
-│  • Reporter earns onchain reputation                   │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│  Shared Product Layer                                        │
+│  • Static frontend                                           │
+│  • Browser-side artifact hashing + IPFS upload               │
+│  • Public verification and governance views                  │
+└───────────────────────┬───────────────────────────┬──────────┘
+                        │                           │
+┌───────────────────────▼─────────────────┐ ┌──────▼──────────────────────────┐
+│  EVM Coordination Layer                 │ │  Solana Coordination Layer      │
+│  • Registry / approvals / delegation    │ │  Native Solana registry program │
+│  • Token authorization / revocation     │ │  Proposal review / delegation   │
+│  • ShieldFactory + Shield charity flow  │ │  Mint / creator / asset records │
+└───────────────────────┬─────────────────┘ └──────┬──────────────────────────┘
+                        │                           │
+┌───────────────────────▼──────────────────────────────────────────────────────┐
+│  Evidence + Detection Layer                                                  │
+│  • Content-addressed artifacts (IPFS / public URIs)                          │
+│  • Community-run watchers and venue adapters                                 │
+│  • Bags.fm support for Solana launch and creator evidence                    │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -69,13 +73,14 @@ tethics is a public utility that:
 
 ### For Builders (Founders)
 
-1. **Register your project** at `https://tethics.eth` (or directly via the frontend)
-2. **Connect wallet** and enter your project name
-3. **Submit 2+ verification proofs** (deployer signature + ENS, DNS, GitHub, or existing contract)
-4. **Select a charity** for unauthorized token proceeds
-5. **Deploy your Shield:** single transaction, done forever
+1. **Open the TETHICS frontend** and choose the relevant ecosystem flow
+2. **Connect your EVM or Solana wallet**
+3. **Submit your project proposal** with proofs, wallets, and public evidence
+4. **Wait for curator / delegated reviewer approval**
+5. **Manage official and unwanted assets** across both ecosystems from the dashboard
+6. **For EVM projects, optionally deploy a Shield** and choose an approved charity route
 
-After registration, anyone querying `Registry.isAuthorized("yourproject", tokenAddress)` gets an instant onchain answer.
+After approval, anyone querying the protocol gets an onchain answer about whether an asset is authorized, unwanted, pending, or revoked.
 
 ### For Token Buyers / Wallets
 
@@ -98,7 +103,7 @@ npx tethics-watcher \
   --reporter-key <YOUR_PRIVATE_KEY>
 ```
 
-Reporters earn onchain reputation (`Registry.reporterScore(address)`).
+Reporters earn onchain reputation (`Registry.reporterScore(address)`), and Solana/Bags evidence can be attached through the cross-chain review flow.
 
 ---
 
@@ -130,7 +135,7 @@ forge test --gas-report
 ### Frontend
 
 ```bash
-# No build step required. Just serve:
+# No build step required. Just serve the static frontend:
 cd frontend
 python3 -m http.server 8080
 # Open http://localhost:8080
@@ -215,6 +220,10 @@ forge script script/DeployUpgradeable.s.sol --rpc-url $BASE_SEPOLIA_RPC --broadc
 
 This deploys proxy-based reference contracts for the registry and shield factory. Individual Shield instances remain immutable.
 Approved Solana mints and Bags creator identities are also stored as first-class onchain registry records, alongside EVM token authorization.
+
+### Solana
+
+The repo also includes a native Solana registry program scaffold and Solana-side client/tooling in [`solana/`](/Users/swarnava/Documents/Projects/tethics/solana). Solana projects are intended to be governed through Solana-native flows, not permanently through the EVM registry.
 
 ## Web Frontend
 
