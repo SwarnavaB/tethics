@@ -1,6 +1,6 @@
 use anchor_lang::{prelude::*, Discriminator};
 
-declare_id!("11111111111111111111111111111111");
+declare_id!("BfyK1qYw59CPATaM4db7j9CLeaaJBbhsQTKfGtVdtpne");
 
 #[program]
 pub mod tethics_registry {

@@ -16,13 +16,16 @@ shared/dist/
 solana/dist/
 solana/target/
 solana/.anchor/
+solana/Cargo.lock.bak
 watchers/**/dist/
 node_modules/
 
 # Environment files
 .env
+.deploy.env
 .env.local
 .env.*.local
+.keys/
 
 # macOS
 .DS_Store

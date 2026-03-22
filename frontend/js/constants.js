@@ -15,8 +15,8 @@ export const CHAINS = {
     name: 'Base Sepolia',
     rpcUrl: 'https://sepolia.base.org',
     blockExplorer: 'https://sepolia.basescan.org',
-    registry: 'TBD',
-    shieldFactory: 'TBD',
+    registry: '0x524fD20d85Bbf43444524942d4464aCD473eA17F',
+    shieldFactory: '0x68AaF72ec877f34A9cB8DFf8b755dED0213d2761',
   },
 };
 
@@ -36,7 +36,7 @@ export const SOLANA_CHAINS = {
     name: 'Solana Devnet',
     rpcUrl: 'https://api.devnet.solana.com',
     explorer: 'https://explorer.solana.com/?cluster=devnet',
-    programId: 'TBD',
+    programId: 'BfyK1qYw59CPATaM4db7j9CLeaaJBbhsQTKfGtVdtpne',
   },
 };
 

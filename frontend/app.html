@@ -59,6 +59,37 @@
     <p style="margin-top:0.4rem">Base registry, Solana-native governance, public evidence bundles, and Bags review records. Curated first, DAO-ready over time.</p>
   </footer>
 
+  <script>
+    window.__tethicsAppReady = false;
+
+    function showBootstrapWarning(message) {
+      const existing = document.getElementById('bootstrap-warning');
+      if (existing) return;
+
+      const warning = document.createElement('div');
+      warning.id = 'bootstrap-warning';
+      warning.className = 'bootstrap-warning';
+      warning.innerHTML = `
+        <strong>Frontend bootstrap issue</strong>
+        <span>${message}</span>
+      `;
+      document.body.appendChild(warning);
+    }
+
+    if (window.location.protocol === 'file:') {
+      showBootstrapWarning('Open TETHICS through a local HTTP server instead of file://. Run `npm run frontend:serve` from the repo root, then open the printed localhost URL.');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const fallback = (kind) => {
+        if (window.__tethicsAppReady) return;
+        showBootstrapWarning(`The ${kind} wallet action is unavailable because the app did not finish loading. Use a local HTTP server and check the browser console for module-load errors.`);
+      };
+
+      document.getElementById('connect-btn')?.addEventListener('click', () => fallback('EVM'));
+      document.getElementById('connect-solana-btn')?.addEventListener('click', () => fallback('Solana'));
+    });
+  </script>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>

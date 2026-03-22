@@ -3,6 +3,14 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
+  Connection,
+  Keypair,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  TransactionInstruction,
+} from "@solana/web3.js";
+import {
   getAttestationSigningPayload,
   type SolanaAttestationEnvelope,
   verifyAttestationSignatures,
@@ -21,6 +29,10 @@ import {
   verifyMessage,
 } from "./signing.js";
 import { generateCurationBundle, type CurationManifest } from "./manifest.js";
+import {
+  SOLANA_PROGRAM_SEEDS,
+  encodeInitializeInstruction,
+} from "./program.js";
 
 async function main() {
   const args = process.argv.slice(2);
@@ -93,6 +105,8 @@ async function main() {
       return verifyAttestation(args);
     case "generate-curation-bundle":
       return generateBundle(args);
+    case "initialize-program":
+      return initializeProgram(args);
     default:
       printUsage();
   }
@@ -161,6 +175,66 @@ async function generateBundle(args: string[]) {
     projectRecord: bundle.projectRecord,
     attestations: signedAttestations,
   });
+}
+
+async function initializeProgram(args: string[]) {
+  const rpcUrl = requiredArg(args, "--rpc-url");
+  const programId = new PublicKey(requiredArg(args, "--program-id"));
+  const rootAuthority = new PublicKey(requiredArg(args, "--root-authority"));
+  const keypair = await loadKeypair(args);
+
+  const connection = new Connection(rpcUrl, "confirmed");
+  const payer = keypair.secretKey.length === 32
+    ? Keypair.fromSeed(Uint8Array.from(keypair.secretKey))
+    : Keypair.fromSecretKey(Uint8Array.from(keypair.secretKey));
+  const [configPda] = PublicKey.findProgramAddressSync(
+    [Buffer.from(SOLANA_PROGRAM_SEEDS.config)],
+    programId,
+  );
+
+  const existing = await connection.getAccountInfo(configPda, "confirmed");
+  if (existing) {
+    throw new Error(`Config PDA already exists: ${configPda.toBase58()}`);
+  }
+
+  const instruction = new TransactionInstruction({
+    programId,
+    keys: [
+      { pubkey: configPda, isSigner: false, isWritable: true },
+      { pubkey: payer.publicKey, isSigner: true, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data: Buffer.from(encodeInitializeInstruction(rootAuthority.toBytes())),
+  });
+
+  const latest = await connection.getLatestBlockhash("confirmed");
+  const transaction = new Transaction({
+    feePayer: payer.publicKey,
+    recentBlockhash: latest.blockhash,
+  }).add(instruction);
+
+  transaction.sign(payer);
+
+  const signature = await connection.sendRawTransaction(transaction.serialize(), {
+    skipPreflight: false,
+    preflightCommitment: "confirmed",
+  });
+
+  await connection.confirmTransaction(
+    {
+      signature,
+      blockhash: latest.blockhash,
+      lastValidBlockHeight: latest.lastValidBlockHeight,
+    },
+    "confirmed",
+  );
+
+  console.log(JSON.stringify({
+    signature,
+    programId: programId.toBase58(),
+    configPda: configPda.toBase58(),
+    rootAuthority: rootAuthority.toBase58(),
+  }, null, 2));
 }
 
 async function loadKeypair(args: string[]) {
@@ -234,7 +308,8 @@ function printUsage() {
   tethics-solana create-revocation --issuer <wallet> --slug <slug> [--mint <mint>] [--wallet <wallet>] --output <file>
   tethics-solana sign-attestation --input <file> --output <file> [--secret-key-file <file>]
   tethics-solana verify-attestation --input <file>
-  tethics-solana generate-curation-bundle --manifest <file> --output-dir <dir> --issuer <wallet> [--sign] [--secret-key-file <file>]`);
+  tethics-solana generate-curation-bundle --manifest <file> --output-dir <dir> --issuer <wallet> [--sign] [--secret-key-file <file>]
+  tethics-solana initialize-program --rpc-url <url> --program-id <pubkey> --root-authority <pubkey> [--secret-key-file <file>]`);
 }
 
 main().catch((error) => {

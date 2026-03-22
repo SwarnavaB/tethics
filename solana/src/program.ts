@@ -32,7 +32,12 @@ export const SOLANA_ROLE_TYPES = {
 export type SolanaRoleType = (typeof SOLANA_ROLE_TYPES)[keyof typeof SOLANA_ROLE_TYPES];
 
 export const SOLANA_ANCHOR_DISCRIMINATORS = {
+  initialize: Uint8Array.from([175, 175, 109, 31, 13, 152, 155, 237]),
   submitProjectProposal: Uint8Array.from([132, 35, 159, 179, 4, 133, 87, 236]),
+  rotateRootAuthority: Uint8Array.from([35, 58, 115, 103, 59, 77, 214, 46]),
+  setPause: Uint8Array.from([63, 32, 154, 2, 56, 103, 79, 45]),
+  addApprover: Uint8Array.from([213, 245, 135, 79, 129, 129, 22, 80]),
+  removeApprover: Uint8Array.from([214, 72, 133, 48, 50, 58, 227, 224]),
   approveProjectProposal: Uint8Array.from([191, 136, 135, 34, 184, 124, 229, 15]),
   rejectProjectProposal: Uint8Array.from([56, 246, 130, 149, 180, 67, 115, 78]),
   authorizeAsset: Uint8Array.from([252, 231, 86, 162, 188, 88, 240, 220]),
@@ -120,6 +125,41 @@ export function encodeSubmitProjectProposalInstruction(args: {
     args.displayName.trim(),
     hexToBytes(args.metadataHash),
     args.metadataURI.trim(),
+  ]);
+}
+
+export function encodeInitializeInstruction(rootAuthorityBytes: Uint8Array): Uint8Array {
+  if (rootAuthorityBytes.length !== 32) {
+    throw new Error("rootAuthorityBytes must be 32 bytes.");
+  }
+  return encodeInstructionPayload([
+    SOLANA_ANCHOR_DISCRIMINATORS.initialize,
+    rootAuthorityBytes,
+  ]);
+}
+
+export function encodeRotateRootAuthorityInstruction(newRootAuthorityBytes: Uint8Array): Uint8Array {
+  if (newRootAuthorityBytes.length !== 32) {
+    throw new Error("newRootAuthorityBytes must be 32 bytes.");
+  }
+  return encodeInstructionPayload([
+    SOLANA_ANCHOR_DISCRIMINATORS.rotateRootAuthority,
+    newRootAuthorityBytes,
+  ]);
+}
+
+export function encodeSetPauseInstruction(paused: boolean): Uint8Array {
+  return encodeInstructionPayload([
+    SOLANA_ANCHOR_DISCRIMINATORS.setPause,
+    paused ? 1 : 0,
+  ]);
+}
+
+export function encodeApproverRoleInstruction(action: "add" | "remove"): Uint8Array {
+  return encodeInstructionPayload([
+    action === "add"
+      ? SOLANA_ANCHOR_DISCRIMINATORS.addApprover
+      : SOLANA_ANCHOR_DISCRIMINATORS.removeApprover,
   ]);
 }
 

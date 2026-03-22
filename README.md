@@ -114,6 +114,10 @@ Reporters earn onchain reputation (`Registry.reporterScore(address)`), and Solan
 - [Foundry](https://getfoundry.sh/): Solidity development toolchain
 - [Node.js](https://nodejs.org/) 18+: For the watcher CLI
 
+## Deployment Notes
+
+- Frontend deployment to `tethics.eth` and `tethics.sol`: [docs/FRONTEND-DOMAIN-DEPLOYMENT.md](docs/FRONTEND-DOMAIN-DEPLOYMENT.md)
+
 ### Smart Contracts
 
 ```bash
@@ -224,6 +228,20 @@ Approved Solana mints and Bags creator identities are also stored as first-class
 ### Solana
 
 The repo also includes a native Solana registry program scaffold and Solana-side client/tooling in [`solana/`](/Users/swarnava/Documents/Projects/tethics/solana). Solana projects are intended to be governed through Solana-native flows, not permanently through the EVM registry.
+
+Bootstrap a Devnet deployment by initializing the config PDA after program deploy:
+
+```bash
+cd solana
+npm install
+npm run build
+
+node dist/cli.js initialize-program \
+  --rpc-url https://api.devnet.solana.com \
+  --program-id <DEPLOYED_PROGRAM_ID> \
+  --root-authority <YOUR_SOLANA_ROOT_AUTHORITY> \
+  --secret-key-file ~/.config/solana/id.json
+```
 
 ## Web Frontend
 

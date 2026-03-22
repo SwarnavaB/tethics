@@ -8,10 +8,15 @@
     "watchers/solana/bags"
   ],
   "scripts": {
+    "frontend:serve": "node scripts/serve-frontend.mjs",
+    "frontend:deploy": "node scripts/deploy-frontend-pinata.mjs",
     "build:shared": "npm --workspace @tethics/shared run build",
     "build:solana": "npm --workspace @tethics/solana run build",
     "build:bags": "npm --workspace @tethics/watcher-bags run build",
     "build:watcher": "npm --workspace tethics-watcher run build",
     "build:ts": "npm run build:shared && npm run build:solana && npm run build:bags && npm run build:watcher"
+  },
+  "dependencies": {
+    "pinata": "^2.5.5"
   }
 }

@@ -3,7 +3,7 @@ seeds = false
 skip-lint = false
 
 [programs.devnet]
-tethics_registry = "TBD"
+tethics_registry = "BfyK1qYw59CPATaM4db7j9CLeaaJBbhsQTKfGtVdtpne"
 
 [provider]
 cluster = "Devnet"

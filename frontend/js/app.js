@@ -2917,6 +2917,7 @@ async function init() {
   renderWalletStatus();
   $('connect-btn')?.addEventListener('click', connectWallet);
   $('connect-solana-btn')?.addEventListener('click', connectSolanaWallet);
+  window.__tethicsAppReady = true;
   window.addEventListener('hashchange', router);
   await router();
 }

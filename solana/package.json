@@ -13,6 +13,9 @@
     "start": "node dist/cli.js",
     "watch": "node ../node_modules/typescript/bin/tsc -p tsconfig.json --watch"
   },
+  "dependencies": {
+    "@solana/web3.js": "^1.98.4"
+  },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "typescript": "^5.4.0"
